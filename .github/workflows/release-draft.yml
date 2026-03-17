@@ -1,0 +1,104 @@
+name: Release Draft
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches:
+      - main
+
+concurrency:
+  group: release-draft
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-draft:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Ensure breaking-change label exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "breaking-change" --color "D93F0B" --description "PR contains breaking changes" 2>/dev/null || true
+
+      - name: Calculate next version and update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAS_BREAKING_CHANGE: ${{ contains(github.event.pull_request.labels.*.name, 'breaking-change') }}
+        run: |
+          set -euo pipefail
+
+          LATEST_TAG_RAW=$(gh release list --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName // "0.0.0"')
+          LATEST_TAG="${LATEST_TAG_RAW#v}"
+          LATEST_TAG="${LATEST_TAG#V}"
+
+          MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
+          MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
+          PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
+
+          if ! [[ "$MAJOR" =~ ^[0-9]+$ ]] || ! [[ "$MINOR" =~ ^[0-9]+$ ]] || ! [[ "$PATCH" =~ ^[0-9]+$ ]]; then
+            MAJOR=0
+            MINOR=0
+            PATCH=0
+          fi
+
+          DRAFT_TAG_RAW=$(gh release list --json tagName,isDraft --jq '[.[] | select(.isDraft == true)] | .[0].tagName // ""')
+          DRAFT_TAG="${DRAFT_TAG_RAW#v}"
+          DRAFT_TAG="${DRAFT_TAG#V}"
+
+          if [ -n "$DRAFT_TAG" ]; then
+            NEXT_VERSION="$DRAFT_TAG"
+          elif [ "$HAS_BREAKING_CHANGE" = "true" ]; then
+            NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          else
+            NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          if [ -n "$LATEST_TAG" ] && [ "$LATEST_TAG" != "0.0.0" ]; then
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$NEXT_VERSION" \
+              -f previous_tag_name="$LATEST_TAG_RAW" \
+              --jq '.body' > generated_notes.md
+          else
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${{ github.repository }}/releases/generate-notes \
+              -f tag_name="$NEXT_VERSION" \
+              --jq '.body' > generated_notes.md
+          fi
+
+          if [ "$HAS_BREAKING_CHANGE" = "true" ]; then
+            python3 scripts/compose_release_notes.py \
+              --generated-notes-file generated_notes.md \
+              --breaking-pr-number "${{ github.event.pull_request.number }}" > release_body.md
+          else
+            python3 scripts/compose_release_notes.py \
+              --generated-notes-file generated_notes.md > release_body.md
+          fi
+
+          python3 scripts/validate_release_notes.py release_body.md
+
+          if [ -n "$DRAFT_TAG_RAW" ]; then
+            gh release edit "$DRAFT_TAG_RAW" \
+              --title "$NEXT_VERSION" \
+              --notes-file release_body.md
+          else
+            gh release create "$NEXT_VERSION" \
+              --title "$NEXT_VERSION" \
+              --notes-file release_body.md \
+              --draft
+          fi

@@ -1,0 +1,41 @@
+[project]
+name = "tstring-bindings"
+version = "0.1.0"
+description = "Native Python bindings for t-string structured data backends"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
+maintainers = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
+requires-python = ">=3.14"
+keywords = ["pep750", "t-strings", "json", "toml", "yaml"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/koxudaxi/tstring-structured-data"
+Repository = "https://github.com/koxudaxi/tstring-structured-data"
+Documentation = "https://github.com/koxudaxi/tstring-structured-data/blob/main/rust/python-bindings/README.md"
+Changelog = "https://github.com/koxudaxi/tstring-structured-data/blob/main/CHANGELOG.md"
+Issues = "https://github.com/koxudaxi/tstring-structured-data/issues"
+
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+features = ["extension-module"]
+module-name = "tstring_bindings.tstring_bindings"
+python-source = "python"
+exclude = [
+    { path = "python/tstring_bindings/__pycache__/**/*", format = ["sdist", "wheel"] },
+    { path = "python/tstring_bindings/*.dSYM/**/*", format = ["sdist", "wheel"] },
+]

@@ -1,0 +1,17 @@
+[package]
+name = "tstring-yaml-pyo3-tests"
+description = "Workspace-only PyO3 integration tests for t-string YAML rendering"
+edition.workspace = true
+exclude = [".DS_Store", "**/.DS_Store", "**/__pycache__"]
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize"] }
+saphyr = { workspace = true }
+tstring-pyo3-bindings = { version = "0.1.0", path = "../tstring-pyo3-bindings" }
+tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }

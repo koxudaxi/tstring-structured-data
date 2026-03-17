@@ -1,0 +1,47 @@
+spec_title = "TOML v1.0.0"
+claim_status = "complete"
+
+[provenance]
+source = "https://toml.io/en/v1.0.0"
+snapshot = "toml-test-d2f394558db1a4ce18e5f8d6c051a459d8db9a73"
+
+[[cases]]
+case_id = "repo-inline-table-and-arrays"
+spec_ref = "TOML v1.0.0 §2-§7"
+expected = "accept"
+execution_layer = "both"
+input_path = "cases/repo-inline-table-and-arrays.toml"
+expected_json_path = "cases/repo-inline-table-and-arrays.expected.json"
+note = "Repo-owned audit case for a plain-data TOML document."
+
+[[cases]]
+case_id = "toml-test-valid-example"
+spec_ref = "TOML v1.0.0 example document"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/example.toml"
+note = "Pinned upstream valid example."
+
+[[cases]]
+case_id = "toml-test-valid-spec-example-1"
+spec_ref = "TOML v1.0.0 example document"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/spec-example-1.toml"
+note = "Pinned upstream spec example."
+
+[[cases]]
+case_id = "toml-test-invalid-float-leading-zero"
+spec_ref = "TOML v1.0.0 integer and float grammar"
+expected = "reject"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/invalid/float/leading-zero.toml"
+note = "Pinned upstream invalid float literal."
+
+[[cases]]
+case_id = "toml-test-invalid-array-no-comma-01"
+spec_ref = "TOML v1.0.0 arrays"
+expected = "reject"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/invalid/array/no-comma-01.toml"
+note = "Pinned upstream invalid array syntax."

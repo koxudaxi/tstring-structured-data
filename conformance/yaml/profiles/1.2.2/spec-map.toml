@@ -1,0 +1,41 @@
+spec_title = "YAML 1.2.2"
+claim_status = "complete"
+
+[provenance]
+source = "https://yaml.org/spec/1.2.2/"
+snapshot = "yaml-test-suite-data-2022-01-17"
+
+[[cases]]
+case_id = "yaml-test-suite-229Q"
+spec_ref = "YAML 1.2.2 chapter 2 sequence of mappings"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/yaml-test-suite/229Q/in.yaml"
+expected_json_path = "vendor/yaml-test-suite/229Q/in.json"
+note = "Pinned upstream chapter 2 example."
+
+[[cases]]
+case_id = "yaml-test-suite-4QFQ"
+spec_ref = "YAML 1.2.2 block scalar indentation indicators"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/yaml-test-suite/4QFQ/in.yaml"
+expected_json_path = "vendor/yaml-test-suite/4QFQ/in.json"
+note = "Pinned upstream block scalar indentation case."
+
+[[cases]]
+case_id = "yaml-test-suite-236B"
+spec_ref = "YAML 1.2.2 mapping grammar"
+expected = "reject"
+execution_layer = "both"
+input_path = "vendor/yaml-test-suite/236B/in.yaml"
+note = "Pinned upstream invalid mapping case."
+
+[[cases]]
+case_id = "yaml-test-suite-9SA2"
+spec_ref = "YAML 1.2.2 flow mappings and double-quoted scalars"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/yaml-test-suite/9SA2/in.yaml"
+expected_json_path = "vendor/yaml-test-suite/9SA2/in.json"
+note = "Pinned upstream multiline flow mapping key case."

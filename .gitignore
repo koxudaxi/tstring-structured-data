@@ -2,9 +2,16 @@
 __pycache__/
 *.py[codz]
 *$py.class
+.DS_Store
+.dSYM/
+.idea/
+.python-version
 
 # C extensions
 *.so
+*.pyd
+*.dll
+*.dylib
 
 # Distribution / packaging
 .Python
@@ -25,6 +32,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.maturin/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

@@ -1,0 +1,55 @@
+spec_title = "TOML v1.1.0"
+claim_status = "partial"
+
+[provenance]
+source = "https://toml.io/en/v1.1.0"
+snapshot = "toml-test-d2f394558db1a4ce18e5f8d6c051a459d8db9a73"
+
+[[cases]]
+case_id = "repo-inline-table-and-arrays"
+spec_ref = "TOML v1.1.0 §2-§7"
+expected = "accept"
+execution_layer = "both"
+input_path = "cases/repo-inline-table-and-arrays.toml"
+expected_json_path = "cases/repo-inline-table-and-arrays.expected.json"
+note = "Repo-owned audit case that remains valid in TOML 1.1."
+
+[[cases]]
+case_id = "toml-test-valid-datetime-no-seconds"
+spec_ref = "TOML v1.1.0 date-time grammar"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/datetime/no-seconds.toml"
+note = "TOML 1.1 allows time values and date-times without seconds."
+
+[[cases]]
+case_id = "toml-test-valid-inline-table-newline"
+spec_ref = "TOML v1.1.0 inline tables"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/inline-table/newline.toml"
+note = "TOML 1.1 allows newlines and trailing commas in inline tables."
+
+[[cases]]
+case_id = "toml-test-valid-inline-table-newline-comment"
+spec_ref = "TOML v1.1.0 inline tables"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/inline-table/newline-comment.toml"
+note = "TOML 1.1 preserves inline-table newline support when comments are present."
+
+[[cases]]
+case_id = "toml-test-valid-string-escape-esc"
+spec_ref = "TOML v1.1.0 strings"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/string/escape-esc.toml"
+note = "TOML 1.1 adds the \\e basic-string escape."
+
+[[cases]]
+case_id = "toml-test-valid-string-hex-escape"
+spec_ref = "TOML v1.1.0 strings"
+expected = "accept"
+execution_layer = "both"
+input_path = "vendor/toml-test/tests/valid/string/hex-escape.toml"
+note = "TOML 1.1 adds \\xHH basic-string escapes."

@@ -1,0 +1,26 @@
+[package]
+name = "tstring-yaml"
+description = "YAML parser-first renderer for t-string structured data backends"
+edition.workspace = true
+documentation = "https://docs.rs/tstring-yaml"
+exclude = [".DS_Store", "**/.DS_Store", "**/__pycache__"]
+homepage.workspace = true
+keywords = ["pep750", "tstring", "yaml", "template-strings", "parser"]
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+categories = ["parser-implementations", "text-processing"]
+
+[lib]
+test = false
+
+[dependencies]
+saphyr = { workspace = true }
+saphyr-parser = { workspace = true }
+serde_json = { workspace = true }
+tstring-syntax = { version = "0.1.0", path = "../tstring-core-rs" }
+
+[dev-dependencies]
+toml = { workspace = true }

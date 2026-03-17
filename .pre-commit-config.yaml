@@ -1,0 +1,30 @@
+default_install_hook_types:
+  - pre-commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: examples-ruff
+        name: examples ruff
+        entry: bash scripts/prek_examples_checks.sh
+        language: system
+        pass_filenames: false
+        files: ^examples/.*\.py$
+      - id: json-backend-checks
+        name: json-tstring checks
+        entry: bash scripts/prek_backend_checks.sh json-tstring json_api_payload.py
+        language: system
+        pass_filenames: false
+        files: ^(json-tstring/|tstring-core/|examples/_display\.py|examples/json_api_payload\.py)
+      - id: toml-backend-checks
+        name: toml-tstring checks
+        entry: bash scripts/prek_backend_checks.sh toml-tstring toml_app_config.py
+        language: system
+        pass_filenames: false
+        files: ^(toml-tstring/|tstring-core/|examples/_display\.py|examples/toml_app_config\.py)
+      - id: yaml-backend-checks
+        name: yaml-tstring checks
+        entry: bash scripts/prek_backend_checks.sh yaml-tstring yaml_release_manifest.py
+        language: system
+        pass_filenames: false
+        files: ^(yaml-tstring/|tstring-core/|examples/_display\.py|examples/yaml_release_manifest\.py)

@@ -1,0 +1,22 @@
+[package]
+name = "tstring-toml"
+description = "TOML parser-first renderer for t-string structured data backends"
+edition.workspace = true
+documentation = "https://docs.rs/tstring-toml"
+exclude = [".DS_Store", "**/.DS_Store", "**/__pycache__"]
+homepage.workspace = true
+keywords = ["pep750", "tstring", "toml", "template-strings", "parser"]
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+categories = ["parser-implementations", "text-processing"]
+
+[lib]
+test = false
+
+[dependencies]
+serde_json = { workspace = true }
+toml = { workspace = true }
+tstring-syntax = { version = "0.1.0", path = "../tstring-core-rs" }

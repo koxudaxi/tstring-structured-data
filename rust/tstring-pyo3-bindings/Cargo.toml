@@ -1,0 +1,30 @@
+[package]
+name = "tstring-pyo3-bindings"
+description = "Internal PyO3 adapter layer for t-string structured data backends"
+edition.workspace = true
+exclude = [".DS_Store", "**/.DS_Store", "**/__pycache__"]
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+pyo3 = { workspace = true }
+serde_json = { workspace = true }
+saphyr = { workspace = true }
+saphyr-parser = { workspace = true }
+toml = { workspace = true }
+tstring-json = { version = "0.1.0", path = "../json-tstring-rs" }
+tstring-syntax = { version = "0.1.0", path = "../tstring-core-rs" }
+tstring-toml = { version = "0.1.0", path = "../toml-tstring-rs" }
+tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }
+
+[dev-dependencies]
+criterion = "0.5.1"
+pyo3 = { workspace = true, features = ["auto-initialize"] }
+
+[[bench]]
+name = "render_paths"
+harness = false
