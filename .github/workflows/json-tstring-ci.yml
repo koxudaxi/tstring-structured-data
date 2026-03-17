@@ -40,6 +40,26 @@ jobs:
       - name: Sync development dependencies
         run: uv sync --group dev
 
+      - name: Configure PyO3 test environment
+        shell: bash
+        run: |
+          PYTHON_BIN="$(uv run --group dev python - <<'PY'
+          import sys
+          print(sys.executable)
+          PY
+          )"
+          PYTHON_LIBDIR="$(uv run --group dev python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_config_var("LIBDIR") or "")
+          PY
+          )"
+
+          echo "PYO3_PYTHON=$PYTHON_BIN" >> "$GITHUB_ENV"
+          if [ -n "$PYTHON_LIBDIR" ]; then
+            echo "LD_LIBRARY_PATH=$PYTHON_LIBDIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+            echo "LIBRARY_PATH=$PYTHON_LIBDIR${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
+          fi
+
       - name: Check formatting
         run: uv run --group dev ruff format --check . ../tstring-core
 
@@ -53,4 +73,4 @@ jobs:
         run: uv run --group dev pytest
 
       - name: Run Rust parser tests
-        run: PYO3_PYTHON="$GITHUB_WORKSPACE/.venv/bin/python3" cargo test --manifest-path ../rust/Cargo.toml -p tstring-json --tests
+        run: cargo test --manifest-path ../rust/Cargo.toml -p tstring-json --tests

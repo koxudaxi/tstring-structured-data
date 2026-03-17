@@ -49,12 +49,15 @@ jobs:
           - os: linux
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi -i python3.14
           - os: macos
             runner: macos-14
             target: aarch64-apple-darwin
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi
           - os: windows
             runner: windows-latest
             target: x86_64-pc-windows-msvc
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -84,7 +87,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist
+          args: ${{ matrix.maturin_args }}
           manylinux: "2_28"
           sccache: "true"
 
@@ -95,8 +98,15 @@ jobs:
       - name: Smoke test installed wheels
         shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python - <<'PY'
+          uv venv --python 3.14 .smoke-venv
+          if [ -x .smoke-venv/bin/python ]; then
+            PYTHON_BIN=.smoke-venv/bin/python
+          else
+            PYTHON_BIN=.smoke-venv/Scripts/python.exe
+          fi
+
+          "$PYTHON_BIN" -m pip install --upgrade pip
+          "$PYTHON_BIN" - <<'PY'
           from pathlib import Path
           import subprocess
           import sys
@@ -110,4 +120,4 @@ jobs:
               check=True,
           )
           PY
-          python -c "import json_tstring, toml_tstring, yaml_tstring, tstring_bindings, tstring_core"
+          "$PYTHON_BIN" -c "import json_tstring, toml_tstring, yaml_tstring, tstring_bindings, tstring_core"

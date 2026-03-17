@@ -65,12 +65,15 @@ jobs:
           - os: linux
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi -i python3.14
           - os: macos
             runner: macos-14
             target: aarch64-apple-darwin
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi
           - os: windows
             runner: windows-latest
             target: x86_64-pc-windows-msvc
+            maturin_args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist --compatibility pypi
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -93,7 +96,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --manifest-path rust/python-bindings/Cargo.toml --out dist
+          args: ${{ matrix.maturin_args }}
           manylinux: "2_28"
           sccache: "true"
 
