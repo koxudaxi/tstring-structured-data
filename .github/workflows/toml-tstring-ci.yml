@@ -1,0 +1,56 @@
+name: toml-tstring CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/toml-tstring-ci.yml"
+      - "conformance/**"
+      - "toml-tstring/**"
+      - "rust/**"
+      - "tstring-core/**"
+  pull_request:
+    paths:
+      - ".github/workflows/toml-tstring-ci.yml"
+      - "conformance/**"
+      - "toml-tstring/**"
+      - "rust/**"
+      - "tstring-core/**"
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toml-tstring
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.14"
+          working-directory: toml-tstring
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Sync development dependencies
+        run: uv sync --group dev
+
+      - name: Check formatting
+        run: uv run --group dev ruff format --check . ../tstring-core
+
+      - name: Run lint
+        run: uv run --group dev ruff check . ../tstring-core
+
+      - name: Run type checker
+        run: uv run --group dev ty check src tests ../tstring-core/src ../examples/_display.py ../examples/toml_app_config.py
+
+      - name: Run tests
+        run: uv run --group dev pytest
+
+      - name: Run Rust parser tests
+        run: PYO3_PYTHON="$GITHUB_WORKSPACE/.venv/bin/python3" cargo test --manifest-path ../rust/Cargo.toml -p tstring-toml --tests

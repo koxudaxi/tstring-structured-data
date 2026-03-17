@@ -1,0 +1,65 @@
+name: Workspace CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: workspace-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Sync development dependencies
+        run: uv sync --group dev
+
+      - name: Run Rust tests
+        run: PYO3_PYTHON="$GITHUB_WORKSPACE/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml --workspace --tests
+
+      - name: Run Python tests
+        run: uv run --group dev pytest json-tstring/tests toml-tstring/tests yaml-tstring/tests -q
+
+      - name: Check formatting
+        run: uv run --group dev ruff format --check json-tstring toml-tstring yaml-tstring tstring-core rust/python-bindings/python
+
+      - name: Run Ruff
+        run: uv run --group dev ruff check json-tstring/src toml-tstring/src yaml-tstring/src tstring-core/src rust/python-bindings/python/tstring_bindings
+
+      - name: Run type checks
+        run: uv run --group dev ty check json-tstring/src json-tstring/tests toml-tstring/src toml-tstring/tests yaml-tstring/src yaml-tstring/tests tstring-core/src rust/python-bindings/python
+
+      - name: Build distributions
+        run: |
+          uv build tstring-core --out-dir dist
+          uv build json-tstring --out-dir dist
+          uv build toml-tstring --out-dir dist
+          uv build yaml-tstring --out-dir dist
+          uv build rust/python-bindings --out-dir dist
+
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/*

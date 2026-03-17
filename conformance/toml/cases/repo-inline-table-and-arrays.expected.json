@@ -1,0 +1,8 @@
+{
+  "title": "Conformance",
+  "items": ["alpha", "beta"],
+  "meta": {
+    "enabled": true,
+    "retries": 3
+  }
+}

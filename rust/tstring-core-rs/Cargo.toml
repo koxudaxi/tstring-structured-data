@@ -1,0 +1,17 @@
+[package]
+name = "tstring-syntax"
+description = "Shared syntax and diagnostics primitives for t-string structured data backends"
+edition.workspace = true
+documentation = "https://docs.rs/tstring-syntax"
+exclude = [".DS_Store", "**/.DS_Store", "**/__pycache__"]
+homepage.workspace = true
+keywords = ["pep750", "tstring", "syntax", "template-strings", "parser"]
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+categories = ["parser-implementations", "text-processing"]
+
+[dependencies]
+num-bigint.workspace = true

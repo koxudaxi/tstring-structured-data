@@ -1,0 +1,53 @@
+[project]
+name = "tstring-core"
+version = "0.1.0"
+description = "Shared runtime primitives for PEP 750 structural template renderers"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
+maintainers = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
+requires-python = ">=3.14"
+dependencies = ["tstring-bindings>=0.1.0"]
+keywords = ["pep750", "t-strings", "template-strings", "runtime", "structured-data"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/koxudaxi/tstring-structured-data"
+Repository = "https://github.com/koxudaxi/tstring-structured-data"
+Documentation = "https://github.com/koxudaxi/tstring-structured-data/blob/main/tstring-core/README.md"
+Changelog = "https://github.com/koxudaxi/tstring-structured-data/blob/main/CHANGELOG.md"
+Issues = "https://github.com/koxudaxi/tstring-structured-data/issues"
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.0",
+    "ty>=0.0.23",
+]
+
+[tool.uv.sources]
+tstring-bindings = { workspace = true }
+
+[tool.uv.build-backend]
+source-exclude = [".DS_Store"]
+wheel-exclude = [".DS_Store"]
+
+[tool.ty.environment]
+extra-paths = ["../rust/python-bindings/python"]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I"]

@@ -1,0 +1,5 @@
+supported_profiles = ["rfc8259"]
+default_profile = "rfc8259"
+
+[profiles.rfc8259]
+manifest_path = "profiles/rfc8259/spec-map.toml"

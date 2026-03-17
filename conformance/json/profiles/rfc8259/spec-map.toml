@@ -1,0 +1,49 @@
+spec_title = "RFC 8259"
+claim_status = "complete"
+
+[provenance]
+source = "https://www.rfc-editor.org/rfc/rfc8259"
+snapshot = "repo-audit-2026-03-15"
+
+[[cases]]
+case_id = "rfc-8259-section-13-image"
+spec_ref = "RFC 8259 §13"
+expected = "accept"
+execution_layer = "both"
+input_path = "cases/rfc-8259-section-13-image.json"
+expected_json_path = "cases/rfc-8259-section-13-image.expected.json"
+note = "Representative object example from the RFC."
+
+[[cases]]
+case_id = "rfc-8259-section-13-values"
+spec_ref = "RFC 8259 §13"
+expected = "accept"
+execution_layer = "both"
+input_path = "cases/rfc-8259-section-13-values.json"
+expected_json_path = "cases/rfc-8259-section-13-values.expected.json"
+note = "Representative array example from the RFC."
+
+[[cases]]
+case_id = "rfc-8259-section-7-surrogate-pair"
+spec_ref = "RFC 8259 §7"
+expected = "accept"
+execution_layer = "both"
+input_path = "cases/rfc-8259-section-7-surrogate-pair.json"
+expected_json_path = "cases/rfc-8259-section-7-surrogate-pair.expected.json"
+note = "Unicode surrogate pair escape sequence."
+
+[[cases]]
+case_id = "rfc-8259-no-leading-zero-number"
+spec_ref = "RFC 8259 §6"
+expected = "reject"
+execution_layer = "both"
+input_path = "cases/rfc-8259-no-leading-zero-number.json"
+note = "Numbers with a leading zero must be rejected."
+
+[[cases]]
+case_id = "rfc-8259-no-trailing-comma"
+spec_ref = "RFC 8259 §4-§5"
+expected = "reject"
+execution_layer = "both"
+input_path = "cases/rfc-8259-no-trailing-comma.json"
+note = "Objects and arrays do not admit trailing commas."

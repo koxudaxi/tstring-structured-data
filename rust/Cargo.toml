@@ -1,0 +1,29 @@
+[workspace]
+members = [
+    "json-tstring-rs",
+    "python-bindings",
+    "tstring-pyo3-bindings",
+    "toml-tstring-rs",
+    "tstring-core-rs",
+    "yaml-pyo3-tests",
+    "yaml-tstring-rs",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Koudai Aono <koxudaxi@gmail.com>"]
+edition = "2024"
+homepage = "https://github.com/koxudaxi/tstring-structured-data"
+license = "MIT"
+repository = "https://github.com/koxudaxi/tstring-structured-data"
+rust-version = "1.94.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+num-bigint = "0.4.6"
+pyo3 = { version = "0.25.1", features = ["auto-initialize"] }
+pythonize = "0.25.0"
+serde_json = { version = "1.0.145", features = ["arbitrary_precision"] }
+saphyr = "0.0.6"
+saphyr-parser = "0.0.6"
+toml = "0.9.8"

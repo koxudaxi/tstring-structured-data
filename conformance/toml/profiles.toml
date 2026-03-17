@@ -1,0 +1,8 @@
+supported_profiles = ["1.0", "1.1"]
+default_profile = "1.1"
+
+[profiles."1.0"]
+manifest_path = "profiles/1.0/spec-map.toml"
+
+[profiles."1.1"]
+manifest_path = "profiles/1.1/spec-map.toml"

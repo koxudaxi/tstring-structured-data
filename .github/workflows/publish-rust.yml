@@ -1,0 +1,107 @@
+name: Publish Rust Crates
+
+on:
+  push:
+    tags:
+      - "**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-rust-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  package-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Verify Rust crates package cleanly
+        run: cargo package --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
+
+  publish-syntax:
+    needs: package-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: crates-io
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Publish tstring-syntax
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-syntax
+
+  publish-json:
+    needs: publish-syntax
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: crates-io
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Wait for tstring-syntax to appear on crates.io
+        run: python3 .github/scripts/wait_for_crate.py tstring-syntax
+
+      - name: Publish tstring-json
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-json
+
+  publish-toml:
+    needs: publish-json
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: crates-io
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Publish tstring-toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-toml
+
+  publish-yaml:
+    needs: publish-toml
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: crates-io
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Publish tstring-yaml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-yaml
