@@ -190,7 +190,7 @@ jobs:
     steps:
       - name: Download distributions
         if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
           path: dist/
@@ -219,14 +219,14 @@ jobs:
           python-version: "3.14"
 
       - name: Download wheel artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: bindings-wheels-*
           path: dist/
           merge-multiple: true
 
       - name: Download source distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-sdist
           path: dist/
