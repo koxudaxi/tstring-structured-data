@@ -21,7 +21,7 @@ version = "0.1.0"
 
 [workspace.dependencies]
 num-bigint = "0.4.6"
-pyo3 = { version = "0.25.1", features = ["auto-initialize"] }
+pyo3 = "0.25.1"
 pythonize = "0.25.0"
 serde_json = { version = "1.0.145", features = ["arbitrary_precision"] }
 saphyr = "0.0.6"

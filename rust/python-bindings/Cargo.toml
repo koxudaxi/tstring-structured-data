@@ -29,3 +29,6 @@ tstring-syntax = { version = "0.1.0", path = "../tstring-core-rs" }
 toml = { workspace = true }
 tstring-toml = { version = "0.1.0", path = "../toml-tstring-rs" }
 tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }
+
+[dev-dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize"] }

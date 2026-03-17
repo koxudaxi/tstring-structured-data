@@ -23,6 +23,7 @@ tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }
 
 [dev-dependencies]
 criterion = "0.5.1"
+pyo3 = { workspace = true, features = ["auto-initialize"] }
 
 [[bench]]
 name = "render_paths"
