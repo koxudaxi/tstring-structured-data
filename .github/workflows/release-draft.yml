@@ -38,6 +38,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          PROJECT_VERSION=$(python3 - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          with Path("pyproject.toml").open("rb") as f:
+              data = tomllib.load(f)
+
+          print(data["project"]["version"])
+          PY
+          )
+
           LATEST_TAG_RAW=$(gh release list --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName // "0.0.0"')
           LATEST_TAG="${LATEST_TAG_RAW#v}"
           LATEST_TAG="${LATEST_TAG#V}"
@@ -55,14 +66,40 @@ jobs:
           DRAFT_TAG_RAW=$(gh release list --json tagName,isDraft --jq '[.[] | select(.isDraft == true)] | .[0].tagName // ""')
           DRAFT_TAG="${DRAFT_TAG_RAW#v}"
           DRAFT_TAG="${DRAFT_TAG#V}"
+          export PROJECT_VERSION LATEST_TAG DRAFT_TAG HAS_BREAKING_CHANGE
 
-          if [ -n "$DRAFT_TAG" ]; then
-            NEXT_VERSION="$DRAFT_TAG"
-          elif [ "$HAS_BREAKING_CHANGE" = "true" ]; then
-            NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
-          else
-            NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
-          fi
+          NEXT_VERSION=$(python3 - <<'PY'
+          import os
+
+          def parse_version(value: str) -> tuple[int, int, int]:
+              try:
+                  major, minor, patch = value.split(".", 2)
+                  return int(major), int(minor), int(patch)
+              except Exception:
+                  return (0, 0, 0)
+
+          project_version = os.environ["PROJECT_VERSION"]
+          latest_tag = os.environ["LATEST_TAG"]
+          draft_tag = os.environ["DRAFT_TAG"]
+          has_breaking_change = os.environ["HAS_BREAKING_CHANGE"] == "true"
+
+          if parse_version(latest_tag) == (0, 0, 0):
+              candidate = project_version
+          elif draft_tag:
+              candidate = draft_tag
+          else:
+              major, minor, patch = parse_version(latest_tag)
+              if has_breaking_change:
+                  candidate = f"{major}.{minor + 1}.0"
+              else:
+                  candidate = f"{major}.{minor}.{patch + 1}"
+
+          if parse_version(candidate) < parse_version(project_version):
+              candidate = project_version
+
+          print(candidate)
+          PY
+          )
 
           if [ -n "$LATEST_TAG" ] && [ "$LATEST_TAG" != "0.0.0" ]; then
             gh api \
