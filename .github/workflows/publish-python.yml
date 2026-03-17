@@ -21,14 +21,21 @@ permissions:
 
 jobs:
   build-package:
-    if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && (matrix.package_path == 'tstring-core' || matrix.package_path == 'json-tstring')) || (github.event.inputs.target == 'bootstrap-2' && (matrix.package_path == 'toml-tstring' || matrix.package_path == 'yaml-tstring')) }}
     strategy:
       matrix:
-        package_path:
-          - tstring-core
-          - json-tstring
-          - toml-tstring
-          - yaml-tstring
+        include:
+          - package_path: tstring-core
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
+          - package_path: json-tstring
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
+          - package_path: toml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
+          - package_path: yaml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,12 +53,15 @@ jobs:
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Build distribution
+        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uv build "${{ matrix.package_path }}" --out-dir dist
 
       - name: Check distribution metadata
+        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uvx twine check dist/*
 
       - name: Upload distributions
+        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
@@ -157,27 +167,36 @@ jobs:
         include:
           - package_path: tstring-core
             environment_name: pypi-tstring-core
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
           - package_path: json-tstring
             environment_name: pypi-json-tstring
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
           - package_path: toml-tstring
             environment_name: pypi-toml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
           - package_path: yaml-tstring
             environment_name: pypi-yaml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
     runs-on: ubuntu-latest
     needs: build-package
-    if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && (matrix.package_path == 'tstring-core' || matrix.package_path == 'json-tstring')) || (github.event.inputs.target == 'bootstrap-2' && (matrix.package_path == 'toml-tstring' || matrix.package_path == 'yaml-tstring')) }}
     environment:
       name: ${{ matrix.environment_name }}
     permissions:
       id-token: write
     steps:
       - name: Download distributions
+        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
           path: dist/
 
       - name: Publish to PyPI
+        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-bindings:
