@@ -141,8 +141,8 @@ Each backend accepts a `profile` argument. Defaults:
 - TOML: `1.1` (also supports `1.0`)
 - YAML: `1.2.2`
 
-See [docs/backend-support-matrix.md](docs/backend-support-matrix.md) and
-[docs/spec-conformance-status.md](docs/spec-conformance-status.md) for details.
+See [Backend Support Matrix](https://tstring-structured-data.koxudaxi.dev/reference/backend-support-matrix/) and
+[Spec Conformance](https://tstring-structured-data.koxudaxi.dev/reference/spec-conformance-status/) for details.
 
 ## Publishing
 
