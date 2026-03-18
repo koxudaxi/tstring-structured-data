@@ -166,6 +166,7 @@ jobs:
           DRAFT_TAG_RAW=$(gh release list --json tagName,isDraft --jq '[.[] | select(.isDraft == true)] | .[0].tagName // ""')
           DRAFT_TAG="${DRAFT_TAG_RAW#v}"
           DRAFT_TAG="${DRAFT_TAG#V}"
+          BC_SOURCE_TAG_RAW="$DRAFT_TAG_RAW"
 
           if [ -n "$DRAFT_TAG" ]; then
             echo "Existing draft: $DRAFT_TAG_RAW"
@@ -184,6 +185,7 @@ jobs:
             fi
           else
             OLD_DRAFT_TAG=""
+            BC_SOURCE_TAG_RAW=""
             if [ "$HAS_BC" = "true" ]; then
               NEW_MINOR=$((MINOR + 1))
               NEXT_VERSION="${MAJOR}.${NEW_MINOR}.0"
@@ -213,8 +215,8 @@ jobs:
           fi
 
           EXISTING_BC=""
-          if [ -n "$DRAFT_TAG_RAW" ]; then
-            EXISTING_BODY=$(gh release view "$DRAFT_TAG_RAW" --json body --jq '.body // ""')
+          if [ -n "$BC_SOURCE_TAG_RAW" ]; then
+            EXISTING_BODY=$(gh release view "$BC_SOURCE_TAG_RAW" --json body --jq '.body // ""')
             if echo "$EXISTING_BODY" | grep -q '^## Breaking Changes$'; then
               EXISTING_BC=$(echo "$EXISTING_BODY" | awk '
                 /^## Breaking Changes$/ { found=1; next }
