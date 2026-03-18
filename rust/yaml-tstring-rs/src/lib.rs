@@ -2048,6 +2048,29 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<YamlStreamNode>
     parse_template_with_profile(template, YamlProfile::default())
 }
 
+pub fn check_template_with_profile(
+    template: &TemplateInput,
+    profile: YamlProfile,
+) -> BackendResult<()> {
+    parse_template_with_profile(template, profile).map(|_| ())
+}
+
+pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
+    check_template_with_profile(template, YamlProfile::default())
+}
+
+pub fn format_template_with_profile(
+    template: &TemplateInput,
+    profile: YamlProfile,
+) -> BackendResult<String> {
+    let stream = parse_template_with_profile(template, profile)?;
+    format_yaml_stream(template, &stream)
+}
+
+pub fn format_template(template: &TemplateInput) -> BackendResult<String> {
+    format_template_with_profile(template, YamlProfile::default())
+}
+
 pub fn normalize_documents_with_profile(
     documents: &[YamlOwned],
     _profile: YamlProfile,
@@ -2072,6 +2095,437 @@ pub fn align_normalized_stream_with_ast(
     for (document_node, document) in stream.documents.iter().zip(normalized.documents.iter_mut()) {
         align_document_with_ast(document_node, document);
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CollectionRenderContext {
+    BlockAllowed,
+    FlowRequired,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RenderedLayout {
+    Inline,
+    Block,
+    Flow,
+}
+
+struct RenderedYamlValue {
+    text: String,
+    layout: RenderedLayout,
+    empty_collection: bool,
+}
+
+impl RenderedYamlValue {
+    fn inline(text: String) -> Self {
+        Self {
+            text,
+            layout: RenderedLayout::Inline,
+            empty_collection: false,
+        }
+    }
+
+    fn block(text: String) -> Self {
+        Self {
+            text,
+            layout: RenderedLayout::Block,
+            empty_collection: false,
+        }
+    }
+
+    fn flow(text: String, empty_collection: bool) -> Self {
+        Self {
+            text,
+            layout: RenderedLayout::Flow,
+            empty_collection,
+        }
+    }
+}
+
+fn format_yaml_stream(template: &TemplateInput, stream: &YamlStreamNode) -> BackendResult<String> {
+    let mut parts = Vec::with_capacity(stream.documents.len());
+    for document in &stream.documents {
+        let mut lines = Vec::new();
+        lines.extend(document.directives.iter().cloned());
+        if document.explicit_start || !document.directives.is_empty() || stream.documents.len() > 1
+        {
+            lines.push("---".to_owned());
+        }
+        lines.push(
+            format_yaml_value(
+                template,
+                &document.value,
+                0,
+                CollectionRenderContext::BlockAllowed,
+            )?
+            .text,
+        );
+        if document.explicit_end {
+            lines.push("...".to_owned());
+        }
+        parts.push(lines.join("\n"));
+    }
+    Ok(parts.join("\n"))
+}
+
+fn format_yaml_value(
+    template: &TemplateInput,
+    node: &YamlValueNode,
+    indent: usize,
+    context: CollectionRenderContext,
+) -> BackendResult<RenderedYamlValue> {
+    match node {
+        YamlValueNode::Decorated(node) => {
+            let mut prefix = String::new();
+            if let Some(tag) = &node.tag {
+                prefix.push('!');
+                prefix.push_str(&assemble_yaml_chunks(template, &tag.chunks, true)?);
+            }
+            if let Some(anchor) = &node.anchor {
+                if !prefix.is_empty() {
+                    prefix.push(' ');
+                }
+                prefix.push('&');
+                prefix.push_str(&assemble_yaml_chunks(template, &anchor.chunks, true)?);
+            }
+            let rendered = format_yaml_value(template, node.value.as_ref(), indent, context)?;
+            if prefix.is_empty() {
+                Ok(rendered)
+            } else {
+                Ok(apply_rendered_prefix(prefix, rendered))
+            }
+        }
+        YamlValueNode::Mapping(node) => format_yaml_mapping(template, node, indent),
+        YamlValueNode::Sequence(node) => format_yaml_sequence(template, node, indent),
+        YamlValueNode::Interpolation(node) => Ok(RenderedYamlValue::inline(
+            interpolation_raw_source(template, node.interpolation_index, &node.span, "YAML value")?,
+        )),
+        YamlValueNode::Scalar(YamlScalarNode::Alias(node)) => Ok(RenderedYamlValue::inline(
+            format!("*{}", assemble_yaml_chunks(template, &node.chunks, true)?),
+        )),
+        YamlValueNode::Scalar(YamlScalarNode::Block(node)) => Ok(RenderedYamlValue::inline(
+            format_yaml_block_scalar(template, node, indent)?,
+        )),
+        YamlValueNode::Scalar(YamlScalarNode::DoubleQuoted(node)) => Ok(RenderedYamlValue::inline(
+            serde_json::to_string(&assemble_yaml_chunks(template, &node.chunks, false)?).unwrap(),
+        )),
+        YamlValueNode::Scalar(YamlScalarNode::SingleQuoted(node)) => {
+            Ok(RenderedYamlValue::inline(format!(
+                "'{}'",
+                assemble_yaml_chunks(template, &node.chunks, false)?.replace('\'', "''")
+            )))
+        }
+        YamlValueNode::Scalar(YamlScalarNode::Plain(node)) => Ok(RenderedYamlValue::inline(
+            format_yaml_plain_scalar(template, node)?,
+        )),
+    }
+}
+
+fn format_yaml_mapping(
+    template: &TemplateInput,
+    node: &YamlMappingNode,
+    indent: usize,
+) -> BackendResult<RenderedYamlValue> {
+    if node.flow {
+        let mut entries = Vec::with_capacity(node.entries.len());
+        for entry in &node.entries {
+            let rendered_key = match &entry.key.value {
+                YamlKeyValue::Complex(key) => {
+                    format_yaml_value(template, key, indent, CollectionRenderContext::FlowRequired)?
+                        .text
+                }
+                _ => format_yaml_key(template, &entry.key)?,
+            };
+            let rendered_key = normalize_flow_key_text(rendered_key);
+            let rendered_value = format_yaml_value(
+                template,
+                &entry.value,
+                indent,
+                CollectionRenderContext::FlowRequired,
+            )?;
+            entries.push(format!("{rendered_key}: {}", rendered_value.text));
+        }
+        return Ok(RenderedYamlValue::flow(
+            format!("{{ {} }}", entries.join(", ")),
+            node.entries.is_empty(),
+        ));
+    }
+
+    let mut rendered = String::new();
+    for entry in &node.entries {
+        if let YamlKeyValue::Complex(key) = &entry.key.value {
+            let rendered_key = format_yaml_value(
+                template,
+                key,
+                indent + 2,
+                CollectionRenderContext::FlowRequired,
+            )?;
+            let rendered_value = format_yaml_value(
+                template,
+                &entry.value,
+                indent + 2,
+                CollectionRenderContext::BlockAllowed,
+            )?;
+            push_yaml_section(
+                &mut rendered,
+                format!("{}? {}", " ".repeat(indent), rendered_key.text),
+            );
+            push_rendered_value_with_prefix(
+                &mut rendered,
+                format!("{}:", " ".repeat(indent)),
+                rendered_value,
+            );
+            continue;
+        }
+        let key = format_yaml_key(template, &entry.key)?;
+        let rendered_value = format_yaml_value(
+            template,
+            &entry.value,
+            indent + 2,
+            CollectionRenderContext::BlockAllowed,
+        )?;
+        push_rendered_value_with_prefix(
+            &mut rendered,
+            format!("{}{}:", " ".repeat(indent), key),
+            rendered_value,
+        );
+    }
+    Ok(RenderedYamlValue::block(rendered))
+}
+
+fn format_yaml_sequence(
+    template: &TemplateInput,
+    node: &YamlSequenceNode,
+    indent: usize,
+) -> BackendResult<RenderedYamlValue> {
+    if node.flow {
+        let items = node
+            .items
+            .iter()
+            .map(|item| {
+                format_yaml_value(
+                    template,
+                    item,
+                    indent,
+                    CollectionRenderContext::FlowRequired,
+                )
+                .map(|item| item.text)
+            })
+            .collect::<BackendResult<Vec<_>>>()?;
+        return Ok(RenderedYamlValue::flow(
+            format!("[ {} ]", items.join(", ")),
+            node.items.is_empty(),
+        ));
+    }
+
+    let mut rendered = String::new();
+    for item in &node.items {
+        let rendered_item = format_yaml_value(
+            template,
+            item,
+            indent + 2,
+            CollectionRenderContext::BlockAllowed,
+        )?;
+        push_rendered_value_with_prefix(
+            &mut rendered,
+            format!("{}-", " ".repeat(indent)),
+            rendered_item,
+        );
+    }
+    Ok(RenderedYamlValue::block(rendered))
+}
+
+fn format_yaml_key(template: &TemplateInput, node: &YamlKeyNode) -> BackendResult<String> {
+    match &node.value {
+        YamlKeyValue::Interpolation(value) => {
+            interpolation_raw_source(template, value.interpolation_index, &value.span, "YAML key")
+        }
+        YamlKeyValue::Scalar(YamlScalarNode::DoubleQuoted(value)) => Ok(serde_json::to_string(
+            &assemble_yaml_chunks(template, &value.chunks, false)?,
+        )
+        .unwrap()),
+        YamlKeyValue::Scalar(YamlScalarNode::SingleQuoted(value)) => Ok(format!(
+            "'{}'",
+            assemble_yaml_chunks(template, &value.chunks, false)?.replace('\'', "''")
+        )),
+        YamlKeyValue::Scalar(YamlScalarNode::Plain(value)) => {
+            format_yaml_plain_scalar(template, value)
+        }
+        YamlKeyValue::Scalar(YamlScalarNode::Alias(node)) => Ok(format!(
+            "*{}",
+            assemble_yaml_chunks(template, &node.chunks, true)?
+        )),
+        YamlKeyValue::Scalar(YamlScalarNode::Block(node)) => {
+            format_yaml_block_scalar(template, node, 0)
+        }
+        YamlKeyValue::Complex(value) => {
+            format_yaml_value(template, value, 0, CollectionRenderContext::FlowRequired)
+                .map(|value| value.text)
+        }
+    }
+}
+
+fn format_yaml_plain_scalar(
+    template: &TemplateInput,
+    node: &YamlPlainScalarNode,
+) -> BackendResult<String> {
+    let text = assemble_yaml_chunks(template, &node.chunks, false)?
+        .trim()
+        .to_owned();
+    if text.is_empty() {
+        return Ok("null".to_owned());
+    }
+    if text.contains('\n') {
+        return Ok(serde_json::to_string(&text).unwrap());
+    }
+    Ok(text)
+}
+
+fn format_yaml_block_scalar(
+    template: &TemplateInput,
+    node: &YamlBlockScalarNode,
+    indent: usize,
+) -> BackendResult<String> {
+    let mut header = node.style.clone();
+    if let Some(chomping) = &node.chomping {
+        header.push_str(chomping);
+    }
+    if let Some(indent_indicator) = node.indent_indicator {
+        header.push_str(&indent_indicator.to_string());
+    }
+    let content = assemble_yaml_chunks(template, &node.chunks, false)?;
+    if content.is_empty() {
+        return Ok(header);
+    }
+
+    let indentation_width = node
+        .indent_indicator
+        .map_or(indent, |indicator| indent.saturating_sub(2) + indicator);
+    let indentation = " ".repeat(indentation_width);
+    let trailing_breaks = content.chars().rev().take_while(|&ch| ch == '\n').count();
+    let body_content = content.trim_end_matches('\n');
+    let body = if body_content.is_empty() {
+        String::new()
+    } else {
+        body_content
+            .split('\n')
+            .map(|line| format!("{indentation}{line}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let trailing = match node.chomping.as_deref() {
+        Some("-") => 0,
+        Some("+") => trailing_breaks.max(1),
+        _ => usize::from(!content.is_empty()),
+    };
+
+    let mut rendered = header;
+    rendered.push('\n');
+    rendered.push_str(&body);
+    for _ in 0..trailing {
+        rendered.push('\n');
+    }
+    Ok(rendered)
+}
+
+fn assemble_yaml_chunks(
+    template: &TemplateInput,
+    chunks: &[YamlChunk],
+    _metadata: bool,
+) -> BackendResult<String> {
+    let mut text = String::new();
+    for chunk in chunks {
+        match chunk {
+            YamlChunk::Text(chunk) => text.push_str(&chunk.value),
+            YamlChunk::Interpolation(chunk) => text.push_str(&interpolation_raw_source(
+                template,
+                chunk.interpolation_index,
+                &chunk.span,
+                "YAML fragment",
+            )?),
+        }
+    }
+    Ok(text)
+}
+
+fn apply_rendered_prefix(prefix: String, rendered: RenderedYamlValue) -> RenderedYamlValue {
+    if rendered.layout == RenderedLayout::Block {
+        return RenderedYamlValue {
+            text: format!("{prefix}\n{}", rendered.text),
+            layout: RenderedLayout::Block,
+            empty_collection: rendered.empty_collection,
+        };
+    }
+    RenderedYamlValue {
+        text: format!("{prefix} {}", rendered.text),
+        layout: rendered.layout,
+        empty_collection: rendered.empty_collection,
+    }
+}
+
+fn push_rendered_value_with_prefix(
+    output: &mut String,
+    prefix: String,
+    rendered: RenderedYamlValue,
+) {
+    if rendered.layout == RenderedLayout::Block && !rendered.empty_collection {
+        if let Some((first, rest)) = rendered.text.split_once('\n')
+            && !first.starts_with(' ')
+        {
+            push_yaml_section(output, format!("{prefix} {first}"));
+            if !rest.is_empty() {
+                push_yaml_section(output, rest.to_owned());
+            }
+            return;
+        }
+        push_yaml_section(output, prefix);
+        push_yaml_section(output, rendered.text);
+        return;
+    }
+
+    push_yaml_section(output, format!("{prefix} {}", rendered.text));
+}
+
+fn push_yaml_section(output: &mut String, section: String) {
+    if output.is_empty() {
+        output.push_str(&section);
+        return;
+    }
+    if !output.ends_with('\n') {
+        output.push('\n');
+    }
+    output.push_str(&section);
+}
+
+fn normalize_flow_key_text(rendered_key: String) -> String {
+    if rendered_key.starts_with('?') && !rendered_key.starts_with("? ") {
+        return format!("? {}", &rendered_key[1..]);
+    }
+    rendered_key
+}
+
+fn interpolation_raw_source(
+    template: &TemplateInput,
+    interpolation_index: usize,
+    span: &SourceSpan,
+    context: &str,
+) -> BackendResult<String> {
+    template
+        .interpolation_raw_source(interpolation_index)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            let expression = template.interpolation(interpolation_index).map_or_else(
+                || format!("slot {interpolation_index}"),
+                |value| value.expression_label().to_owned(),
+            );
+            BackendError::semantic_at(
+                "yaml.format",
+                format!(
+                    "Cannot format {context} interpolation {expression:?} without raw source text."
+                ),
+                Some(span.clone()),
+            )
+        })
 }
 
 fn normalize_document(document: &YamlOwned) -> BackendResult<NormalizedDocument> {
@@ -2970,7 +3424,7 @@ fn value_span(value: &YamlValueNode) -> &SourceSpan {
 
 #[cfg(test)]
 mod tests {
-    use super::{YamlValueNode, parse_template};
+    use super::{parse_template, YamlValueNode};
     use pyo3::prelude::*;
     use saphyr::{LoadableYamlNode, ScalarOwned, YamlOwned};
     use tstring_pyo3_bindings::{extract_template, yaml::render_document};
@@ -3308,11 +3762,9 @@ mod tests {
             let complex_key = module.getattr("complex_key").unwrap();
             let complex_key = extract_template(py, &complex_key, "yaml_t/yaml_t_str").unwrap();
             let rendered = render_document(py, &parse_template(&complex_key).unwrap()).unwrap();
-            assert!(
-                rendered
-                    .text
-                    .contains("? { name: [ \"Alice\", \"Bob\" ] }\n: 1")
-            );
+            assert!(rendered
+                .text
+                .contains("? { name: [ \"Alice\", \"Bob\" ] }\n: 1"));
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             assert_eq!(
                 documents[0]
@@ -4636,11 +5088,9 @@ mod tests {
             let rendered = render_document(py, &parse_template(&flow_null_key).unwrap()).unwrap();
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             let mapping = yaml_mapping(&documents[0]).expect("expected YAML mapping");
-            assert!(
-                mapping
-                    .iter()
-                    .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1))
-            );
+            assert!(mapping
+                .iter()
+                .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1)));
             assert!(mapping.iter().any(|(key, value)| {
                 yaml_scalar_text(key) == Some("") && yaml_integer(value) == Some(2)
             }));
@@ -4651,11 +5101,9 @@ mod tests {
             let rendered = render_document(py, &parse_template(&block_null_key).unwrap()).unwrap();
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             let mapping = yaml_mapping(&documents[0]).expect("expected YAML mapping");
-            assert!(
-                mapping
-                    .iter()
-                    .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1))
-            );
+            assert!(mapping
+                .iter()
+                .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1)));
 
             let quoted_null_key = module.getattr("quoted_null_key").unwrap();
             let quoted_null_key =
@@ -5059,11 +5507,9 @@ mod tests {
                 yaml_mapping_entry(&documents[0], "value").and_then(YamlOwned::as_bool),
                 Some(true)
             );
-            assert!(
-                yaml_mapping_entry(&documents[0], "none")
-                    .expect("none key")
-                    .is_null()
-            );
+            assert!(yaml_mapping_entry(&documents[0], "none")
+                .expect("none key")
+                .is_null());
             assert_string_entry(&documents[0], "legacy_bool", "on");
             assert_string_entry(&documents[0], "legacy_yes", "yes");
 
@@ -5341,11 +5787,9 @@ mod tests {
                 yaml_mapping_entry(&documents[0], "value_float").and_then(yaml_float),
                 Some(1.0)
             );
-            assert!(
-                yaml_mapping_entry(&documents[0], "value_null")
-                    .expect("value_null")
-                    .is_null()
-            );
+            assert!(yaml_mapping_entry(&documents[0], "value_null")
+                .expect("value_null")
+                .is_null());
 
             for (name, expected_text) in [
                 ("root_int", "---\n!!int 3"),

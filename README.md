@@ -103,6 +103,45 @@ text = render_text(template)
 JSON and TOML work the same way — `json_tstring.render_data()`,
 `toml_tstring.render_text()`, etc.
 
+## Rust backend API
+
+The Rust crates also expose parser-first `check` and `format` entry points for
+tools that already tokenize template strings themselves, such as LSP servers and
+linters.
+
+```rust
+use tstring_json::{check_template, format_template};
+use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+
+let template = TemplateInput::from_segments(vec![
+    TemplateSegment::StaticText("{\"name\": ".to_owned()),
+    TemplateSegment::Interpolation(TemplateInterpolation {
+        expression: "name".to_owned(),
+        conversion: None,
+        format_spec: String::new(),
+        interpolation_index: 0,
+        raw_source: Some("{name}".to_owned()),
+    }),
+    TemplateSegment::StaticText("}".to_owned()),
+]);
+
+check_template(&template)?;
+let text = format_template(&template)?;
+assert_eq!(text, "{\"name\": {name}}");
+```
+
+Available on each backend crate:
+
+- `check_template_with_profile(...) -> BackendResult<()>`
+- `check_template(...) -> BackendResult<()>`
+- `format_template_with_profile(...) -> BackendResult<String>`
+- `format_template(...) -> BackendResult<String>`
+
+`format_*` requires every interpolation to include `raw_source`, because the
+formatter preserves `{expr!r:spec}` verbatim instead of reconstructing it from
+parsed fields. The formatter returns canonical JSON/TOML/YAML text; it does not
+preserve comments or original whitespace.
+
 ## Setup
 
 Requires Python 3.14, `uv`, and Rust 1.94.0.

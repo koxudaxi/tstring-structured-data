@@ -110,6 +110,20 @@ enum NormalizedValue {
 enum ErrorKind { Parse, Semantic, Unrepresentable }
 ```
 
+In addition to the Python bindings, the Rust crates expose public backend APIs
+for external tools that construct `TemplateInput` directly:
+
+```rust
+check_template_with_profile(&TemplateInput, profile) -> BackendResult<()>
+check_template(&TemplateInput) -> BackendResult<()>
+format_template_with_profile(&TemplateInput, profile) -> BackendResult<String>
+format_template(&TemplateInput) -> BackendResult<String>
+```
+
+This is the integration path used by tools such as `t-linter`: Tree-sitter stays
+on the fast path for syntax highlighting, while `check` and `format` call the
+Rust backend only for strict diagnostics and canonical formatting.
+
 Format parsers build interpolation-aware ASTs and normalize via third-party libraries:
 
 | Crate | Spec | Normalization | AST Nodes |
@@ -171,6 +185,18 @@ Format versions are expressed as profile strings (`"rfc8259"`, `"1.0"`, `"1.1"`,
 ### Parse cache
 
 Template static structure (`template.strings`) is the cache key, so the same template with different interpolation values reuses the parsed AST. 256-entry LRU per format.
+
+### External tool integration
+
+When the backend is used outside the Python runtime, callers provide
+`TemplateInput` themselves. In that mode:
+
+- `check_*` validates structure and returns `BackendError` diagnostics with token spans.
+- `format_*` re-renders canonical JSON/TOML/YAML while preserving interpolation
+  source from `TemplateInterpolation.raw_source`.
+- `format_*` does not preserve comments or original layout.
+- Missing `raw_source` is treated as a semantic error because the formatter will
+  not synthesize `{expr!conversion:format_spec}` text.
 
 ### Error model
 
