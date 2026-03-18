@@ -90,6 +90,10 @@ fn check_reports_spans_for_invalid_templates_end_to_end() {
         TemplateInput::from_segments(vec![TemplateSegment::StaticText("{\"name\": ]".to_owned())]);
 
     let error = backend_json::check_template(&template).expect_err("expected json parse failure");
-    assert_eq!(error.diagnostics[0].code, "json.parse");
-    assert!(error.diagnostics[0].span.is_some());
+    let first = error
+        .diagnostics
+        .first()
+        .expect("expected at least one diagnostic");
+    assert_eq!(first.code, "json.parse");
+    assert!(first.span.is_some());
 }
