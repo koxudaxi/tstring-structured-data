@@ -7,6 +7,8 @@
 [![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue)](https://docs.python.org/3/whatsnew/3.14.html)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+> Maintainer update: Open to opportunities. [koxudaxi.dev](https://koxudaxi.dev/?utm_source=github_readme&utm_medium=top&utm_campaign=open_to_work)
+
 Parser-first JSON, TOML, and YAML backends for
 [PEP 750 – Template Strings](https://peps.python.org/pep-0750/) t-strings.
 
