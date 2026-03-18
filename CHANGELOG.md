@@ -4,6 +4,39 @@ All notable changes to this project are documented in this file.
 This changelog is automatically generated from GitHub Releases.
 
 ---
+## [0.2.0](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.0) - 2026-03-18
+
+## Breaking Changes
+
+### Template String Parsing Changes
+* YAML plain scalars with whitespace and interpolations now rejected - YAML templates containing plain scalars that mix whitespace-containing text with interpolations now fail validation at parse time with the error "Quote YAML plain scalars that mix whitespace and interpolations." This affects all YAML template parsing through Python bindings and Rust's `format_template*`/`check_template*` functions. To fix, wrap such scalar values in quotes. (#25)
+
+  ```yaml
+  # Previously accepted, now rejected:
+  key: hello world {var}
+  replicas: fdsa fff fds{count}
+
+  # Still valid (no whitespace in text portion):
+  key: item-{var}
+  key: prefix{var}suffix
+
+  # Fixed (use quotes):
+  key: "hello world {var}"
+  ```
+
+## What's Changed
+* Add llms.txt generation, docs version updater, and CHANGELOG integration by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/24
+* build(deps): bump actions/github-script from 7 to 8 by @dependabot[bot] in https://github.com/koxudaxi/tstring-structured-data/pull/3
+* build(deps): bump actions/checkout from 5 to 6 by @dependabot[bot] in https://github.com/koxudaxi/tstring-structured-data/pull/6
+* build(deps): bump actions/upload-artifact from 4 to 7 by @dependabot[bot] in https://github.com/koxudaxi/tstring-structured-data/pull/8
+* build(deps): bump criterion from 0.5.1 to 0.8.2 in /rust by @dependabot[bot] in https://github.com/koxudaxi/tstring-structured-data/pull/7
+* Add YAML template validation API for plain scalar interpolations by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/25
+
+
+**Full Changelog**: https://github.com/koxudaxi/tstring-structured-data/compare/0.1.1...0.2.0
+
+---
+
 
 ## [0.1.1](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.1.1) - 2026-03-18
 
