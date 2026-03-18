@@ -46,7 +46,7 @@ jobs:
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Verify Rust crates package cleanly
-        run: cargo package --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
+        run: cargo package --allow-dirty --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
 
   publish-syntax:
     needs: package-check
@@ -68,7 +68,7 @@ jobs:
       - name: Publish tstring-syntax
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-syntax
+        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-syntax
 
   publish-json:
     needs: publish-syntax
@@ -93,7 +93,7 @@ jobs:
       - name: Publish tstring-json
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-json
+        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-json
 
   publish-toml:
     needs: publish-json
@@ -115,7 +115,7 @@ jobs:
       - name: Publish tstring-toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-toml
+        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-toml
 
   publish-yaml:
     needs: publish-toml
@@ -137,4 +137,4 @@ jobs:
       - name: Publish tstring-yaml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-yaml
+        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-yaml
