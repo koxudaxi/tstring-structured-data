@@ -1,5 +1,5 @@
 use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
-use tstring_yaml::{check_template, format_template, parse_template, YamlValueNode};
+use tstring_yaml::{YamlValueNode, check_template, format_template, parse_template};
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
     TemplateSegment::Interpolation(TemplateInterpolation {
@@ -109,4 +109,27 @@ fn format_requires_raw_source_for_yaml_interpolations() {
     let error = format_template(&template).expect_err("expected format failure");
     assert_eq!(error.kind, tstring_syntax::ErrorKind::Semantic);
     assert_eq!(error.diagnostics[0].code, "yaml.format");
+}
+
+#[test]
+fn formats_explicit_complex_keys_as_flow_when_required() {
+    let template = TemplateInput::from_segments(vec![TemplateSegment::StaticText(
+        "?\n  a:\n    - 1\n    - 2\n: 1\n".to_owned(),
+    )]);
+
+    assert_eq!(
+        format_template(&template).expect("expected format success"),
+        "? { a: [ 1, 2 ] }\n: 1"
+    );
+}
+
+#[test]
+fn preserves_required_newline_for_empty_block_scalars() {
+    let template =
+        TemplateInput::from_segments(vec![TemplateSegment::StaticText("value: |\n".to_owned())]);
+
+    assert_eq!(
+        format_template(&template).expect("expected format success"),
+        "value: |\n"
+    );
 }

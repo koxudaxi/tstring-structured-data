@@ -2195,8 +2195,8 @@ fn format_yaml_value(
                 Ok(apply_rendered_prefix(prefix, rendered))
             }
         }
-        YamlValueNode::Mapping(node) => format_yaml_mapping(template, node, indent),
-        YamlValueNode::Sequence(node) => format_yaml_sequence(template, node, indent),
+        YamlValueNode::Mapping(node) => format_yaml_mapping(template, node, indent, context),
+        YamlValueNode::Sequence(node) => format_yaml_sequence(template, node, indent, context),
         YamlValueNode::Interpolation(node) => Ok(RenderedYamlValue::inline(
             interpolation_raw_source(template, node.interpolation_index, &node.span, "YAML value")?,
         )),
@@ -2225,8 +2225,9 @@ fn format_yaml_mapping(
     template: &TemplateInput,
     node: &YamlMappingNode,
     indent: usize,
+    context: CollectionRenderContext,
 ) -> BackendResult<RenderedYamlValue> {
-    if node.flow {
+    if node.flow || context == CollectionRenderContext::FlowRequired {
         let mut entries = Vec::with_capacity(node.entries.len());
         for entry in &node.entries {
             let rendered_key = match &entry.key.value {
@@ -2297,8 +2298,9 @@ fn format_yaml_sequence(
     template: &TemplateInput,
     node: &YamlSequenceNode,
     indent: usize,
+    context: CollectionRenderContext,
 ) -> BackendResult<RenderedYamlValue> {
-    if node.flow {
+    if node.flow || context == CollectionRenderContext::FlowRequired {
         let items = node
             .items
             .iter()
@@ -2395,7 +2397,9 @@ fn format_yaml_block_scalar(
     }
     let content = assemble_yaml_chunks(template, &node.chunks, false)?;
     if content.is_empty() {
-        return Ok(header);
+        let mut rendered = header;
+        rendered.push('\n');
+        return Ok(rendered);
     }
 
     let indentation_width = node
@@ -3424,7 +3428,7 @@ fn value_span(value: &YamlValueNode) -> &SourceSpan {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_template, YamlValueNode};
+    use super::{YamlValueNode, parse_template};
     use pyo3::prelude::*;
     use saphyr::{LoadableYamlNode, ScalarOwned, YamlOwned};
     use tstring_pyo3_bindings::{extract_template, yaml::render_document};
@@ -3762,9 +3766,11 @@ mod tests {
             let complex_key = module.getattr("complex_key").unwrap();
             let complex_key = extract_template(py, &complex_key, "yaml_t/yaml_t_str").unwrap();
             let rendered = render_document(py, &parse_template(&complex_key).unwrap()).unwrap();
-            assert!(rendered
-                .text
-                .contains("? { name: [ \"Alice\", \"Bob\" ] }\n: 1"));
+            assert!(
+                rendered
+                    .text
+                    .contains("? { name: [ \"Alice\", \"Bob\" ] }\n: 1")
+            );
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             assert_eq!(
                 documents[0]
@@ -5088,9 +5094,11 @@ mod tests {
             let rendered = render_document(py, &parse_template(&flow_null_key).unwrap()).unwrap();
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             let mapping = yaml_mapping(&documents[0]).expect("expected YAML mapping");
-            assert!(mapping
-                .iter()
-                .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1)));
+            assert!(
+                mapping
+                    .iter()
+                    .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1))
+            );
             assert!(mapping.iter().any(|(key, value)| {
                 yaml_scalar_text(key) == Some("") && yaml_integer(value) == Some(2)
             }));
@@ -5101,9 +5109,11 @@ mod tests {
             let rendered = render_document(py, &parse_template(&block_null_key).unwrap()).unwrap();
             let documents = parse_rendered_yaml(&rendered.text).unwrap();
             let mapping = yaml_mapping(&documents[0]).expect("expected YAML mapping");
-            assert!(mapping
-                .iter()
-                .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1)));
+            assert!(
+                mapping
+                    .iter()
+                    .any(|(key, value)| key.is_null() && yaml_integer(value) == Some(1))
+            );
 
             let quoted_null_key = module.getattr("quoted_null_key").unwrap();
             let quoted_null_key =
@@ -5507,9 +5517,11 @@ mod tests {
                 yaml_mapping_entry(&documents[0], "value").and_then(YamlOwned::as_bool),
                 Some(true)
             );
-            assert!(yaml_mapping_entry(&documents[0], "none")
-                .expect("none key")
-                .is_null());
+            assert!(
+                yaml_mapping_entry(&documents[0], "none")
+                    .expect("none key")
+                    .is_null()
+            );
             assert_string_entry(&documents[0], "legacy_bool", "on");
             assert_string_entry(&documents[0], "legacy_yes", "yes");
 
@@ -5787,9 +5799,11 @@ mod tests {
                 yaml_mapping_entry(&documents[0], "value_float").and_then(yaml_float),
                 Some(1.0)
             );
-            assert!(yaml_mapping_entry(&documents[0], "value_null")
-                .expect("value_null")
-                .is_null());
+            assert!(
+                yaml_mapping_entry(&documents[0], "value_null")
+                    .expect("value_null")
+                    .is_null()
+            );
 
             for (name, expected_text) in [
                 ("root_int", "---\n!!int 3"),
