@@ -38,7 +38,9 @@ jobs:
         uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          show_full_output: true
+          model: claude-opus-4-6
+          max_turns: "50"
+          timeout_minutes: "10"
           prompt: |
             Analyze PR #${{ github.event.pull_request.number }} for breaking changes.
 
@@ -76,36 +78,58 @@ jobs:
             - If code examples help, include them in markdown code blocks
             - Only include categories that have actual breaking changes
             - Return empty string for breaking_changes_content if no breaking changes
-
-          claude_args: |
-            --model claude-opus-4-6
-            --max-turns 50
-            --json-schema '{"type":"object","properties":{"has_breaking_changes":{"type":"boolean","description":"Whether this PR contains breaking changes"},"breaking_changes_content":{"type":"string","description":"Formatted breaking changes section content (without ## Breaking Changes header), or empty string if none"},"reasoning":{"type":"string","description":"Brief explanation of why this is or is not a breaking change"}},"required":["has_breaking_changes","breaking_changes_content","reasoning"]}'
+            Return ONLY a valid JSON object with this exact schema:
+            {"has_breaking_changes": boolean, "breaking_changes_content": string, "reasoning": string}
+            Do not wrap the JSON in markdown code fences.
 
       - name: Parse Claude output
         id: parse
         env:
-          CLAUDE_OUTPUT: ${{ steps.claude.outputs.structured_output }}
+          CLAUDE_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          HAS_BC=$(echo "$CLAUDE_OUTPUT" | jq -r '.has_breaking_changes // false')
-          BC_CONTENT=$(echo "$CLAUDE_OUTPUT" | jq -r '.breaking_changes_content // ""')
-          REASONING=$(echo "$CLAUDE_OUTPUT" | jq -r '.reasoning // ""')
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
 
-          echo "has_breaking_changes=$HAS_BC" >> $GITHUB_OUTPUT
+          execution_file = Path(os.environ["CLAUDE_EXECUTION_FILE"])
+          execution_log = json.loads(execution_file.read_text())
 
-          DELIMITER="EOF_$(date +%s%N)"
+          assistant_content = ""
+          for item in reversed(execution_log):
+            if item.get("role") != "assistant":
+              continue
+            content = item.get("content", "")
+            if isinstance(content, str):
+              assistant_content = content
+              break
+            if isinstance(content, list):
+              text_parts = []
+              for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                  text_parts.append(block.get("text", ""))
+              assistant_content = "\n".join(text_parts).strip()
+              if assistant_content:
+                break
 
-          {
-            echo "breaking_changes_content<<$DELIMITER"
-            printf '%s\n' "$BC_CONTENT"
-            echo "$DELIMITER"
-          } >> $GITHUB_OUTPUT
+          if not assistant_content:
+            raise SystemExit("No assistant response found in Claude execution log")
 
-          {
-            echo "reasoning<<$DELIMITER"
-            printf '%s\n' "$REASONING"
-            echo "$DELIMITER"
-          } >> $GITHUB_OUTPUT
+          assistant_content = assistant_content.strip()
+          fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", assistant_content, re.DOTALL)
+          if fenced:
+            assistant_content = fenced.group(1).strip()
+
+          data = json.loads(assistant_content)
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          delimiter = "EOF_PARSE_OUTPUT"
+          with github_output.open("a", encoding="utf-8") as f:
+            f.write(f"has_breaking_changes={str(data.get('has_breaking_changes', False)).lower()}\n")
+            f.write(f"breaking_changes_content<<{delimiter}\n{data.get('breaking_changes_content', '')}\n{delimiter}\n")
+            f.write(f"reasoning<<{delimiter}\n{data.get('reasoning', '')}\n{delimiter}\n")
+          PY
 
       - name: Add breaking-change-analyzed label
         env:
