@@ -182,7 +182,7 @@ fn parse_yaml_template(
 ) -> PyResult<Arc<YamlStreamNode>> {
     yaml_parse_cache()
         .get_or_try_insert_with(&template_cache_key(template, profile.as_str()), || {
-            tstring_yaml::parse_template_with_profile(template.input(), profile)
+            tstring_yaml::parse_validated_template_with_profile(template.input(), profile)
         })
         .map_err(backend_error_to_py)
 }
