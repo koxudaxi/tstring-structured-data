@@ -12,7 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Validate lockstep package versions
+        run: python3 scripts/manage_versions.py check
+
   verify-package-distributions:
+    needs: version-check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,6 +55,7 @@ jobs:
         run: uvx twine check dist/*
 
   verify-bindings-wheels:
+    needs: version-check
     strategy:
       matrix:
         include:
