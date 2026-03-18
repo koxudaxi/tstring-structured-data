@@ -600,6 +600,29 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<JsonDocumentNod
     parse_template_with_profile(template, JsonProfile::default())
 }
 
+pub fn check_template_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<()> {
+    parse_template_with_profile(template, profile).map(|_| ())
+}
+
+pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
+    check_template_with_profile(template, JsonProfile::default())
+}
+
+pub fn format_template_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<String> {
+    let document = parse_template_with_profile(template, profile)?;
+    format_json_value(template, &document.value)
+}
+
+pub fn format_template(template: &TemplateInput) -> BackendResult<String> {
+    format_template_with_profile(template, JsonProfile::default())
+}
+
 pub fn normalize_document_with_profile(
     value: &Value,
     _profile: JsonProfile,
@@ -639,6 +662,95 @@ pub fn normalize_value(value: &Value) -> BackendResult<NormalizedValue> {
     }
 }
 
+fn format_json_value(template: &TemplateInput, node: &JsonValueNode) -> BackendResult<String> {
+    match node {
+        JsonValueNode::String(node) => format_json_string(template, node),
+        JsonValueNode::Literal(node) => Ok(node.source.clone()),
+        JsonValueNode::Interpolation(node) => {
+            interpolation_raw_source(template, node.interpolation_index, &node.span, "JSON value")
+        }
+        JsonValueNode::Object(node) => {
+            let mut members = Vec::with_capacity(node.members.len());
+            for member in &node.members {
+                members.push(format!(
+                    "{}: {}",
+                    format_json_key(template, &member.key)?,
+                    format_json_value(template, &member.value)?
+                ));
+            }
+            Ok(format!("{{{}}}", members.join(", ")))
+        }
+        JsonValueNode::Array(node) => {
+            let items = node
+                .items
+                .iter()
+                .map(|item| format_json_value(template, item))
+                .collect::<BackendResult<Vec<_>>>()?;
+            Ok(format!("[{}]", items.join(", ")))
+        }
+    }
+}
+
+fn format_json_key(template: &TemplateInput, node: &JsonKeyNode) -> BackendResult<String> {
+    match &node.value {
+        JsonKeyValue::String(node) => format_json_string(template, node),
+        JsonKeyValue::Interpolation(node) => interpolation_raw_source(
+            template,
+            node.interpolation_index,
+            &node.span,
+            "JSON object key",
+        ),
+    }
+}
+
+fn format_json_string(template: &TemplateInput, node: &JsonStringNode) -> BackendResult<String> {
+    let mut rendered = String::from("\"");
+    for chunk in &node.chunks {
+        match chunk {
+            JsonStringPart::Chunk(chunk) => rendered.push_str(&escape_json_fragment(&chunk.value)),
+            JsonStringPart::Interpolation(node) => rendered.push_str(&interpolation_raw_source(
+                template,
+                node.interpolation_index,
+                &node.span,
+                "JSON string fragment",
+            )?),
+        }
+    }
+    rendered.push('"');
+    Ok(rendered)
+}
+
+fn escape_json_fragment(text: &str) -> String {
+    let mut escaped = serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_owned());
+    escaped.remove(0);
+    escaped.pop();
+    escaped
+}
+
+fn interpolation_raw_source(
+    template: &TemplateInput,
+    interpolation_index: usize,
+    span: &SourceSpan,
+    context: &str,
+) -> BackendResult<String> {
+    template
+        .interpolation_raw_source(interpolation_index)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            let expression = template.interpolation(interpolation_index).map_or_else(
+                || format!("slot {interpolation_index}"),
+                |value| value.expression_label().to_owned(),
+            );
+            BackendError::semantic_at(
+                "json.format",
+                format!(
+                    "Cannot format {context} interpolation {expression:?} without raw source text."
+                ),
+                Some(span.clone()),
+            )
+        })
+}
+
 fn normalize_number(number: &serde_json::Number) -> BackendResult<NormalizedValue> {
     let source = number.to_string();
     if source.contains(['.', 'e', 'E']) {
@@ -662,9 +774,9 @@ fn normalize_number(number: &serde_json::Number) -> BackendResult<NormalizedValu
 
 #[cfg(test)]
 mod tests {
-    use super::{JsonKeyValue, JsonStringPart, JsonValueNode, parse_template};
+    use super::{parse_template, JsonKeyValue, JsonStringPart, JsonValueNode};
     use pyo3::prelude::*;
-    use serde_json::{Map, Number, Value, json};
+    use serde_json::{json, Map, Number, Value};
     use tstring_pyo3_bindings::{extract_template, json::render_document};
     use tstring_syntax::{BackendError, BackendResult, ErrorKind};
 

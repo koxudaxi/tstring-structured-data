@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "backend-e2e-tests",
     "json-tstring-rs",
     "python-bindings",
     "tstring-pyo3-bindings",

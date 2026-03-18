@@ -499,6 +499,24 @@ impl TemplateInput {
         items.push(StreamItem::Eof { span: eof_span });
         items
     }
+
+    #[must_use]
+    pub fn interpolation(&self, interpolation_index: usize) -> Option<&TemplateInterpolation> {
+        self.segments.iter().find_map(|segment| match segment {
+            TemplateSegment::Interpolation(interpolation)
+                if interpolation.interpolation_index == interpolation_index =>
+            {
+                Some(interpolation)
+            }
+            _ => None,
+        })
+    }
+
+    #[must_use]
+    pub fn interpolation_raw_source(&self, interpolation_index: usize) -> Option<&str> {
+        self.interpolation(interpolation_index)
+            .and_then(|interpolation| interpolation.raw_source.as_deref())
+    }
 }
 
 #[cfg(test)]
@@ -583,6 +601,25 @@ mod tests {
         assert_eq!(interpolation.format_spec, ">5");
         assert_eq!(interpolation.interpolation_index, 0);
         assert_eq!(interpolation.expression_label(), "value");
+    }
+
+    #[test]
+    fn interpolation_lookup_preserves_raw_source() {
+        let template = TemplateInput::from_parts(
+            vec!["hello ".to_owned(), String::new()],
+            vec![TemplateInterpolation {
+                expression: "value".to_owned(),
+                conversion: Some("r".to_owned()),
+                format_spec: ">5".to_owned(),
+                interpolation_index: 0,
+                raw_source: Some("{value!r:>5}".to_owned()),
+            }],
+        );
+
+        let interpolation = template.interpolation(0).expect("expected interpolation");
+        assert_eq!(interpolation.expression, "value");
+        assert_eq!(template.interpolation_raw_source(0), Some("{value!r:>5}"));
+        assert_eq!(template.interpolation_raw_source(1), None);
     }
 
     #[test]

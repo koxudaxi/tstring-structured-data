@@ -1110,6 +1110,29 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<TomlDocumentNod
     parse_template_with_profile(template, TomlProfile::default())
 }
 
+pub fn check_template_with_profile(
+    template: &TemplateInput,
+    profile: TomlProfile,
+) -> BackendResult<()> {
+    parse_template_with_profile(template, profile).map(|_| ())
+}
+
+pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
+    check_template_with_profile(template, TomlProfile::default())
+}
+
+pub fn format_template_with_profile(
+    template: &TemplateInput,
+    profile: TomlProfile,
+) -> BackendResult<String> {
+    let document = parse_template_with_profile(template, profile)?;
+    format_toml_document(template, &document)
+}
+
+pub fn format_template(template: &TemplateInput) -> BackendResult<String> {
+    format_template_with_profile(template, TomlProfile::default())
+}
+
 pub fn normalize_document_with_profile(
     value: &toml::Value,
     _profile: TomlProfile,
@@ -1146,6 +1169,166 @@ pub fn normalize_value(value: &toml::Value) -> BackendResult<NormalizedValue> {
             .collect::<BackendResult<Vec<_>>>()
             .map(NormalizedValue::Mapping),
     }
+}
+
+fn format_toml_document(
+    template: &TemplateInput,
+    node: &TomlDocumentNode,
+) -> BackendResult<String> {
+    node.statements
+        .iter()
+        .map(|statement| format_toml_statement(template, statement))
+        .collect::<BackendResult<Vec<_>>>()
+        .map(|statements| statements.join("\n"))
+}
+
+fn format_toml_statement(
+    template: &TemplateInput,
+    node: &TomlStatementNode,
+) -> BackendResult<String> {
+    match node {
+        TomlStatementNode::Assignment(node) => Ok(format!(
+            "{} = {}",
+            format_key_path(template, &node.key_path)?,
+            format_toml_value(template, &node.value)?
+        )),
+        TomlStatementNode::TableHeader(node) => {
+            Ok(format!("[{}]", format_key_path(template, &node.key_path)?))
+        }
+        TomlStatementNode::ArrayTableHeader(node) => Ok(format!(
+            "[[{}]]",
+            format_key_path(template, &node.key_path)?
+        )),
+    }
+}
+
+fn format_key_path(template: &TemplateInput, node: &TomlKeyPathNode) -> BackendResult<String> {
+    node.segments
+        .iter()
+        .map(|segment| format_key_segment(template, segment))
+        .collect::<BackendResult<Vec<_>>>()
+        .map(|segments| segments.join("."))
+}
+
+fn format_key_segment(
+    template: &TemplateInput,
+    node: &TomlKeySegmentNode,
+) -> BackendResult<String> {
+    match &node.value {
+        TomlKeySegmentValue::Bare(value) => {
+            if node.bare && is_bare_key(value) {
+                Ok(value.clone())
+            } else {
+                Ok(render_basic_string(value))
+            }
+        }
+        TomlKeySegmentValue::String(value) => format_toml_string(template, value),
+        TomlKeySegmentValue::Interpolation(value) => {
+            interpolation_raw_source(template, value.interpolation_index, &value.span, "TOML key")
+        }
+    }
+}
+
+fn format_toml_value(template: &TemplateInput, node: &TomlValueNode) -> BackendResult<String> {
+    match node {
+        TomlValueNode::String(node) => format_toml_string(template, node),
+        TomlValueNode::Literal(node) => Ok(node.source.clone()),
+        TomlValueNode::Interpolation(node) => {
+            interpolation_raw_source(template, node.interpolation_index, &node.span, "TOML value")
+        }
+        TomlValueNode::Array(node) => node
+            .items
+            .iter()
+            .map(|item| format_toml_value(template, item))
+            .collect::<BackendResult<Vec<_>>>()
+            .map(|items| format!("[{}]", items.join(", "))),
+        TomlValueNode::InlineTable(node) => node
+            .entries
+            .iter()
+            .map(|entry| {
+                Ok(format!(
+                    "{} = {}",
+                    format_key_path(template, &entry.key_path)?,
+                    format_toml_value(template, &entry.value)?
+                ))
+            })
+            .collect::<BackendResult<Vec<_>>>()
+            .map(|entries| {
+                if entries.is_empty() {
+                    "{}".to_owned()
+                } else {
+                    format!("{{ {} }}", entries.join(", "))
+                }
+            }),
+    }
+}
+
+fn format_toml_string(template: &TemplateInput, node: &TomlStringNode) -> BackendResult<String> {
+    let mut rendered = String::new();
+    for chunk in &node.chunks {
+        match chunk {
+            TomlStringPart::Chunk(chunk) => rendered.push_str(&chunk.value),
+            TomlStringPart::Interpolation(node) => rendered.push_str(&interpolation_raw_source(
+                template,
+                node.interpolation_index,
+                &node.span,
+                "TOML string fragment",
+            )?),
+        }
+    }
+    Ok(render_basic_string(&rendered))
+}
+
+fn interpolation_raw_source(
+    template: &TemplateInput,
+    interpolation_index: usize,
+    span: &SourceSpan,
+    context: &str,
+) -> BackendResult<String> {
+    template
+        .interpolation_raw_source(interpolation_index)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            let expression = template.interpolation(interpolation_index).map_or_else(
+                || format!("slot {interpolation_index}"),
+                |value| value.expression_label().to_owned(),
+            );
+            BackendError::semantic_at(
+                "toml.format",
+                format!(
+                    "Cannot format {context} interpolation {expression:?} without raw source text."
+                ),
+                Some(span.clone()),
+            )
+        })
+}
+
+fn is_bare_key(value: &str) -> bool {
+    value
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+}
+
+fn render_basic_string(value: &str) -> String {
+    let mut rendered = String::with_capacity(value.len() + 2);
+    rendered.push('"');
+    for ch in value.chars() {
+        match ch {
+            '\u{0008}' => rendered.push_str("\\b"),
+            '\t' => rendered.push_str("\\t"),
+            '\n' => rendered.push_str("\\n"),
+            '\u{000c}' => rendered.push_str("\\f"),
+            '\r' => rendered.push_str("\\r"),
+            '"' => rendered.push_str("\\\""),
+            '\\' => rendered.push_str("\\\\"),
+            '\u{0000}'..='\u{001f}' | '\u{007f}' => {
+                rendered.push_str(&format!("\\u{:04X}", ch as u32));
+            }
+            _ => rendered.push(ch),
+        }
+    }
+    rendered.push('"');
+    rendered
 }
 
 fn normalize_float(value: f64) -> NormalizedFloat {
@@ -1207,7 +1390,7 @@ fn normalize_time(value: toml::value::Time) -> NormalizedTime {
 
 #[cfg(test)]
 mod tests {
-    use super::{TomlKeySegmentValue, TomlStatementNode, TomlValueNode, parse_template};
+    use super::{parse_template, TomlKeySegmentValue, TomlStatementNode, TomlValueNode};
     use pyo3::prelude::*;
     use tstring_pyo3_bindings::{extract_template, toml::render_document};
     use tstring_syntax::{BackendError, BackendResult, ErrorKind};
@@ -1718,12 +1901,10 @@ mod tests {
             );
             let special_floats = table["special_float_array"].as_array().expect("array");
             assert!(special_floats[0].as_float().expect("float").is_infinite());
-            assert!(
-                special_floats[1]
-                    .as_float()
-                    .expect("float")
-                    .is_sign_negative()
-            );
+            assert!(special_floats[1]
+                .as_float()
+                .expect("float")
+                .is_sign_negative());
             assert!(special_floats[2].as_float().expect("float").is_nan());
             assert_eq!(
                 table["special_float_nested_arrays"]
@@ -1735,24 +1916,18 @@ mod tests {
             let special_float_deeper_arrays = table["special_float_deeper_arrays"]
                 .as_array()
                 .expect("array");
-            assert!(
-                special_float_deeper_arrays[0][0][0]
-                    .as_float()
-                    .expect("float")
-                    .is_infinite()
-            );
-            assert!(
-                special_float_deeper_arrays[1][0][0]
-                    .as_float()
-                    .expect("float")
-                    .is_sign_negative()
-            );
-            assert!(
-                special_float_deeper_arrays[2][0][0]
-                    .as_float()
-                    .expect("float")
-                    .is_nan()
-            );
+            assert!(special_float_deeper_arrays[0][0][0]
+                .as_float()
+                .expect("float")
+                .is_infinite());
+            assert!(special_float_deeper_arrays[1][0][0]
+                .as_float()
+                .expect("float")
+                .is_sign_negative());
+            assert!(special_float_deeper_arrays[2][0][0]
+                .as_float()
+                .expect("float")
+                .is_nan());
             assert_eq!(
                 table["upper_exp_nested_mixed"]
                     .as_array()
@@ -1760,18 +1935,14 @@ mod tests {
                     .len(),
                 2
             );
-            assert!(
-                table["special_float_inline_table"]["pos"]
-                    .as_float()
-                    .expect("float")
-                    .is_infinite()
-            );
-            assert!(
-                table["special_float_inline_table"]["nan"]
-                    .as_float()
-                    .expect("float")
-                    .is_nan()
-            );
+            assert!(table["special_float_inline_table"]["pos"]
+                .as_float()
+                .expect("float")
+                .is_infinite());
+            assert!(table["special_float_inline_table"]["nan"]
+                .as_float()
+                .expect("float")
+                .is_nan());
             assert_eq!(
                 table["special_float_mixed_nested"]
                     .as_array()
@@ -1855,10 +2026,9 @@ mod tests {
                 Err(err) => err,
             };
             assert_eq!(err.kind, ErrorKind::Parse);
-            assert!(
-                err.message
-                    .contains("single-line basic strings cannot contain newlines")
-            );
+            assert!(err
+                .message
+                .contains("single-line basic strings cannot contain newlines"));
         });
     }
 
@@ -2750,42 +2920,30 @@ mod tests {
                 rendered.text,
                 "special_float_inline_table = { pos = +inf, neg = -inf, nan = nan }\nspecial_float_mixed_nested = [[+inf, -inf], [nan]]"
             );
-            assert!(
-                rendered.data["special_float_inline_table"]["pos"]
-                    .as_float()
-                    .expect("pos float")
-                    .is_infinite()
-            );
-            assert!(
-                rendered.data["special_float_inline_table"]["neg"]
-                    .as_float()
-                    .expect("neg float")
-                    .is_sign_negative()
-            );
-            assert!(
-                rendered.data["special_float_inline_table"]["nan"]
-                    .as_float()
-                    .expect("nan float")
-                    .is_nan()
-            );
-            assert!(
-                rendered.data["special_float_mixed_nested"][0][0]
-                    .as_float()
-                    .expect("nested pos")
-                    .is_infinite()
-            );
-            assert!(
-                rendered.data["special_float_mixed_nested"][0][1]
-                    .as_float()
-                    .expect("nested neg")
-                    .is_sign_negative()
-            );
-            assert!(
-                rendered.data["special_float_mixed_nested"][1][0]
-                    .as_float()
-                    .expect("nested nan")
-                    .is_nan()
-            );
+            assert!(rendered.data["special_float_inline_table"]["pos"]
+                .as_float()
+                .expect("pos float")
+                .is_infinite());
+            assert!(rendered.data["special_float_inline_table"]["neg"]
+                .as_float()
+                .expect("neg float")
+                .is_sign_negative());
+            assert!(rendered.data["special_float_inline_table"]["nan"]
+                .as_float()
+                .expect("nan float")
+                .is_nan());
+            assert!(rendered.data["special_float_mixed_nested"][0][0]
+                .as_float()
+                .expect("nested pos")
+                .is_infinite());
+            assert!(rendered.data["special_float_mixed_nested"][0][1]
+                .as_float()
+                .expect("nested neg")
+                .is_sign_negative());
+            assert!(rendered.data["special_float_mixed_nested"][1][0]
+                .as_float()
+                .expect("nested nan")
+                .is_nan());
         });
     }
 

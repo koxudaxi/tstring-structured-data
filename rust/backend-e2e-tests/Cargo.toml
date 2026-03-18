@@ -1,0 +1,16 @@
+[package]
+name = "tstring-backend-e2e-tests"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dev-dependencies]
+tstring-json = { version = "0.1.0", path = "../json-tstring-rs" }
+tstring-syntax = { version = "0.1.0", path = "../tstring-core-rs" }
+tstring-toml = { version = "0.1.0", path = "../toml-tstring-rs" }
+tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }
