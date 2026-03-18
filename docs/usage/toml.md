@@ -12,8 +12,8 @@ This example builds a TOML configuration with interpolated table headers, keys, 
 
 ### What to notice
 
-- The service name is interpolated into **table headers**: `[services.{service_name}]`
-- The region is interpolated into a **TOML key position**: `{region} = {environment}`
+- The service name is interpolated into table headers: `[services.{service_name}]`
+- The region is interpolated into a TOML key position: `{region} = {environment}`
 - The multiline welcome message starts life as a readable TOML string
 - `datetime`, `date`, and `time` values render as TOML-native literals
 - Bare scalar assembly like `{service_name}-{environment}` becomes a string

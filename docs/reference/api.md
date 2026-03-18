@@ -32,14 +32,14 @@ Parse a t-string template and return Python objects.
     render_data(template: Template, *, profile: YamlProfile | str | None = None) -> YamlValue
     ```
 
-**Parameters:**
+Parameters:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `template` | `Template` | A PEP 750 template string (`t"..."`) |
 | `profile` | `JsonProfile \| TomlProfile \| YamlProfile \| str \| None` | Spec version profile (see [Profile types](#profile-types)). `None` uses the default for the format |
 
-**Returns:** Parsed Python data (`dict`, `list`, `str`, `int`, `float`, `bool`, `None`, or temporal types for TOML).
+Returns: Parsed Python data (`dict`, `list`, `str`, `int`, `float`, `bool`, `None`, or temporal types for TOML).
 
 ### `render_text`
 
@@ -69,9 +69,9 @@ Parse a t-string template and return valid formatted text.
     render_text(template: Template, *, profile: YamlProfile | str | None = None) -> str
     ```
 
-**Parameters:** Same as `render_data`.
+Parameters: Same as `render_data`.
 
-**Returns:** A `str` containing valid JSON, TOML, or YAML text.
+Returns: A `str` containing valid JSON, TOML, or YAML text.
 
 ### `render_result`
 
@@ -101,9 +101,9 @@ Parse a t-string template and return both data and text.
     render_result(template: Template, *, profile: YamlProfile | str | None = None) -> RenderResult[YamlValue]
     ```
 
-**Parameters:** Same as `render_data`.
+Parameters: Same as `render_data`.
 
-**Returns:** A `RenderResult` with `.data` and `.text` attributes.
+Returns: A `RenderResult` with `.data` and `.text` attributes.
 
 ## Types
 

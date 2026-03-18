@@ -1,6 +1,6 @@
 # Installation
 
-Requires **Python 3.14+** ([PEP 750](https://peps.python.org/pep-0750/) t-strings).
+Requires Python 3.14+ ([PEP 750](https://peps.python.org/pep-0750/) t-strings).
 
 ## Install a backend
 
@@ -56,7 +56,7 @@ Release automation publishes pre-built wheels for:
 | macOS | Apple Silicon (arm64) |
 | Windows | x86_64 |
 
-Other environments require a local **Rust 1.94.0+** toolchain to build `tstring-bindings` from source.
+Other environments require a local Rust 1.94.0+ toolchain to build `tstring-bindings` from source.
 
 ## Installing multiple backends
 

@@ -27,10 +27,10 @@ This example demonstrates YAML-specific features: anchors, aliases, tags, and bl
 
 ### What to notice
 
-- The **anchor name** is interpolated once and reused through an alias
-- The release name uses **quoted-string fragment** interpolation
-- The startup message uses **YAML block-scalar** assembly
-- The local **tag** comes from static punctuation plus an interpolated suffix
+- The anchor name is interpolated once and reused through an alias
+- The release name uses quoted-string fragment interpolation
+- The startup message uses YAML block-scalar assembly
+- The local tag comes from static punctuation plus an interpolated suffix
 
 ## Interpolation contexts
 

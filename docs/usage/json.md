@@ -12,7 +12,7 @@ This example builds a JSON API payload with dynamic keys, nested structures, and
 
 ### What to notice
 
-- The dynamic account id is used in a JSON **key position**: `"account-{account_id}"`
+- The dynamic account id is used in a JSON key position: `"account-{account_id}"`
 - Nested `dict`/`list` values are rendered as native JSON objects and arrays
 - String fragments like `"{display_name}-{first_role}"` stay readable
 - Bare scalar assembly like `active-{first_role}` becomes a JSON string
