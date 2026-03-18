@@ -16,20 +16,45 @@ T-strings (introduced in Python 3.14) give you f-string convenience with structu
 Templates are parsed into an AST first, interpolation values are validated and inserted into slots in the AST, then the AST is rendered to text or materialized to Python objects. This parse-first approach prevents structurally invalid output and injection by construction.
 
 ```python
-from yaml_tstring import render_data
+from yaml_tstring import render_data, render_text
 
 name = "api"
 replicas = 3
 labels = {"app": "api", "team": "platform"}
+env = {"LOG_LEVEL": "info", "WORKERS": "4"}
+ports = [8080, 8443]
 
-data = render_data(t"""\
+template = t"""\
 service:
   name: {name}
   replicas: {replicas}
   labels: {labels}
-""")
-# {'service': {'name': 'api', 'replicas': 3,
-#              'labels': {'app': 'api', 'team': 'platform'}}}
+  env: {env}
+  ports: {ports}
+"""
+
+# render_data: t-string -> parsed Python data
+data = render_data(template)
+# {'service': {'name': 'api',
+#              'replicas': 3,
+#              'labels': {'app': 'api', 'team': 'platform'},
+#              'env': {'LOG_LEVEL': 'info', 'WORKERS': '4'},
+#              'ports': [8080, 8443]}}
+
+# render_text: t-string -> valid YAML text
+text = render_text(template)
+# service:
+#   name: "api"
+#   replicas: 3
+#   labels:
+#     "app": "api"
+#     "team": "platform"
+#   env:
+#     "LOG_LEVEL": "info"
+#     "WORKERS": "4"
+#   ports:
+#     - 8080
+#     - 8443
 ```
 
 ## Packages
