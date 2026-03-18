@@ -604,6 +604,9 @@ pub fn parse_validated_template_with_profile(
     template: &TemplateInput,
     profile: JsonProfile,
 ) -> BackendResult<JsonDocumentNode> {
+    // JSON does not add format-specific post-parse validation yet. Keep the
+    // validated entry point aligned with the other backends so callers can rely
+    // on one API shape as backend-specific validation rules are introduced.
     parse_template_with_profile(template, profile)
 }
 

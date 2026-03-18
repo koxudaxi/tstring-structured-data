@@ -105,6 +105,31 @@ fn validates_token_like_plain_scalars_with_interpolation() {
 }
 
 #[test]
+fn validates_plain_scalars_with_multiple_interpolations_and_no_whitespace() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("plain: ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "foo".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{foo}".to_owned()),
+        }),
+        TemplateSegment::StaticText("-".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "bar".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 1,
+            raw_source: Some("{bar}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    validate_template(&template).expect("expected YAML validation success");
+}
+
+#[test]
 fn formats_yaml_templates_with_raw_interpolations() {
     let template = TemplateInput::from_segments(vec![
         TemplateSegment::StaticText("name: ".to_owned()),
