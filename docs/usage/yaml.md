@@ -42,7 +42,7 @@ This example demonstrates YAML-specific features: anchors, aliases, tags, and bl
 | Anchor | `&{name}` | Must be `str`, non-empty, no whitespace |
 | Alias | `*{name}` | Must be `str`, non-empty, no whitespace |
 | Tag | `!{tag}` | Must be `str`, non-empty, no whitespace |
-| Block scalar | `\|` / `>` with `{fragments}` | Scalar assembly |
+| Block scalar | Literal (`\|`) or folded (`>`) with `{fragments}` | Scalar assembly |
 
 ## Supported types
 
