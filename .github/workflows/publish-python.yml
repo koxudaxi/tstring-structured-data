@@ -145,7 +145,7 @@ jobs:
           python-version: "3.14"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Build distribution
         if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
@@ -200,7 +200,7 @@ jobs:
           python-version: "3.14"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: ${{ matrix.target }}
 
@@ -256,7 +256,7 @@ jobs:
           python-version: "3.14"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Build source distribution
         run: uvx maturin sdist --manifest-path rust/python-bindings/Cargo.toml --out dist
