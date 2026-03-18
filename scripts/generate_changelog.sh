@@ -15,7 +15,7 @@ echo ""
 echo "---"
 echo ""
 
-gh release list --repo "$REPO" --limit 500 --json tagName --jq '.[].tagName' | while read -r tag; do
+gh release list --repo "$REPO" --limit 500 --exclude-drafts --json tagName --jq '.[].tagName' | while read -r tag; do
     DATE=$(gh release view "$tag" --repo "$REPO" --json publishedAt --jq '.publishedAt | split("T")[0]')
     BODY=$(gh release view "$tag" --repo "$REPO" --json body --jq '.body // ""')
 
