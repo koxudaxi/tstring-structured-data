@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -39,10 +39,13 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          exclude_comments_by_actor: coderabbitai,coderabbitai[bot]
           show_full_output: true
           prompt: |
             Analyze PR #${{ github.event.pull_request.number }} for breaking changes.
+
+            PR Title: ${{ github.event.pull_request.title }}
+            PR Body:
+            ${{ github.event.pull_request.body }}
 
             Analyze the merged changes and determine if this PR contains breaking changes.
 
@@ -68,7 +71,7 @@ jobs:
             - Return empty string for breaking_changes_content if no breaking changes
 
           claude_args: |
-            --model claude-opus-4-6
+            --model claude-opus-4-5-20251101
             --max-turns 50
             --json-schema '{"type":"object","properties":{"has_breaking_changes":{"type":"boolean","description":"Whether this PR contains breaking changes"},"breaking_changes_content":{"type":"string","description":"Formatted breaking changes section content (without ## Breaking Changes header), or empty string if none"},"reasoning":{"type":"string","description":"Brief explanation of why this is or is not a breaking change"}},"required":["has_breaking_changes","breaking_changes_content","reasoning"]}'
 
