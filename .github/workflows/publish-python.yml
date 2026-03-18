@@ -1,6 +1,9 @@
 name: Publish Python Packages
 
 on:
+  push:
+    tags:
+      - "**"
   workflow_dispatch:
     inputs:
       version:
@@ -56,8 +59,42 @@ jobs:
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.resolve.outputs.target }}
+    steps:
+      - name: Resolve publish target
+        id: resolve
+        shell: bash
+        env:
+          INPUT_TARGET: ${{ github.event.inputs.target }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          target="${INPUT_TARGET}"
+          if [ -z "$target" ]; then
+            if [ "$REF_TYPE" = "tag" ]; then
+              target="all"
+            else
+              echo "::error::Set the target input or run this workflow on a tag ref."
+              exit 1
+            fi
+          fi
+
+          case "$target" in
+            bootstrap-1|bootstrap-2|all) ;;
+            *)
+              echo "::error::Expected target to be one of bootstrap-1, bootstrap-2, all; got: $target"
+              exit 1
+              ;;
+          esac
+
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+
   version-check:
-    needs: resolve-version
+    needs:
+      - resolve-version
+      - resolve-target
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -74,6 +111,7 @@ jobs:
   build-package:
     needs:
       - resolve-version
+      - resolve-target
       - version-check
     strategy:
       matrix:
@@ -110,15 +148,15 @@ jobs:
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Build distribution
-        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uv build "${{ matrix.package_path }}" --out-dir dist
 
       - name: Check distribution metadata
-        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uvx twine check dist/*
 
       - name: Upload distributions
-        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
@@ -127,8 +165,9 @@ jobs:
   build-bindings-wheels:
     needs:
       - resolve-version
+      - resolve-target
       - version-check
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     strategy:
       matrix:
         include:
@@ -197,8 +236,9 @@ jobs:
   build-bindings-sdist:
     needs:
       - resolve-version
+      - resolve-target
       - version-check
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -251,21 +291,23 @@ jobs:
             publish_in_bootstrap_1: false
             publish_in_bootstrap_2: true
     runs-on: ubuntu-latest
-    needs: build-package
+    needs:
+      - resolve-target
+      - build-package
     environment:
       name: ${{ matrix.environment_name }}
     permissions:
       id-token: write
     steps:
       - name: Download distributions
-        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: actions/download-artifact@v8
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
           path: dist/
 
       - name: Publish to PyPI
-        if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (github.event.inputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
@@ -273,9 +315,10 @@ jobs:
   publish-bindings:
     runs-on: ubuntu-latest
     needs:
+      - resolve-target
       - build-bindings-wheels
       - build-bindings-sdist
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     environment:
       name: pypi-tstring-bindings
     permissions:
