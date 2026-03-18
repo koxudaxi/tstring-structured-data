@@ -35,10 +35,9 @@ jobs:
       - name: Run Claude Code Analysis
         id: claude
         timeout-minutes: 10
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-base-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           show_full_output: true
           prompt: |
             Analyze PR #${{ github.event.pull_request.number }} for breaking changes.
@@ -46,6 +45,14 @@ jobs:
             PR Title: ${{ github.event.pull_request.title }}
             PR Body:
             ${{ github.event.pull_request.body }}
+
+            Merge Commit SHA: ${{ github.event.pull_request.merge_commit_sha }}
+            Base SHA: ${{ github.event.pull_request.base.sha }}
+            Head SHA: ${{ github.event.pull_request.head.sha }}
+
+            Use the checked out repository to inspect the merged changes.
+            Compare the merge commit against the base SHA to determine the actual code and behavior changes.
+            Do not use pull request comments, review comments, or review summaries for this analysis.
 
             Analyze the merged changes and determine if this PR contains breaking changes.
 
