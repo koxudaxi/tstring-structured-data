@@ -37,7 +37,7 @@ Parse a t-string template and return Python objects.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `template` | `Template` | A PEP 750 template string (`t"..."`) |
-| `profile` | `str \| None` | Spec version profile. `None` uses the default for the format |
+| `profile` | `FormatProfile \| str \| None` | Spec version profile (see [Profile types](#profile-types)). `None` uses the default for the format |
 
 **Returns:** Parsed Python data (`dict`, `list`, `str`, `int`, `float`, `bool`, `None`, or temporal types for TOML).
 

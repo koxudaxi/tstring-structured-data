@@ -22,7 +22,7 @@ This example builds a JSON API payload with dynamic keys, nested structures, and
 | Context | Example | Description |
 |---------|---------|-------------|
 | Whole value | `{"key": {val}}` | Any JSON-serializable Python value |
-| Object key | `{key}: ...` | Must be `str` |
+| Object key | `"{key}": ...` | Must be `str` |
 | String fragment | `"hello {name}"` | Inserted inside a quoted string |
 
 ## Supported types

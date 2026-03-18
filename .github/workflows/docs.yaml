@@ -2,13 +2,15 @@ name: Docs
 
 on:
   pull_request:
-    paths: ['docs/**', 'examples/**', 'zensical.toml', 'overrides/**', 'README.md', 'CONTRIBUTING.md']
+    paths: ['docs/**', 'examples/**', 'zensical.toml', 'overrides/**', 'README.md', 'CONTRIBUTING.md', 'pyproject.toml', 'uv.lock']
   push:
     branches:
       - main
   release:
     types: [published]
   workflow_dispatch:
+    branches:
+      - main
 
 concurrency:
   group: docs-${{ github.ref }}
@@ -30,7 +32,7 @@ jobs:
     - name: Install dependencies
       run: uv sync --only-group docs
     - name: build site
-      run: zensical build --clean
+      run: uv run --only-group docs zensical build --clean
 
     # PR Preview Deploy (skip forked PRs as secrets are not available)
     - name: Deploy Preview
