@@ -1,6 +1,6 @@
 # Error Handling
 
-T-string backends detect errors that f-strings silently ignore, and prevent injection attacks by construction.
+T-string backends catch errors that f-strings silently ignore and block injection by construction.
 
 ## Validation errors
 
@@ -59,7 +59,7 @@ render_text(t'{{"metric": {value}}}')
 # => UnrepresentableValueError
 ```
 
-JSON (RFC 8259) forbids `Infinity` and `NaN`. This library also rejects them for YAML to keep output portable across consumers.
+JSON (RFC 8259) forbids `Infinity` and `NaN`. This library also rejects them for YAML to keep output portable.
 
 ## Injection prevention
 
@@ -81,4 +81,4 @@ tstring = render_text(t'{{"role": "viewer", "username": {user_input}}}')
 json.loads(tstring).get("role")  # => "viewer" (correct)
 ```
 
-Because values are inserted into the **parsed AST** rather than concatenated into strings, structural injection is impossible.
+Values are inserted into the parsed AST, not concatenated into strings, so the attacker cannot break out of the value slot.

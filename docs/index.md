@@ -44,16 +44,8 @@ Pick the format you need:
 
 `tstring-core` (shared runtime) and `tstring-bindings` (native extension) are pulled in automatically.
 
-## Key features
+## See also
 
-- **Injection-safe** — values are inserted into the AST, not concatenated into strings
-- **Type-preserving** — Python dicts, lists, ints, and floats render as native format values
-- **Dual output** — `render_data()` returns Python objects, `render_text()` returns formatted text
-- **Profile-based** — select spec versions (`rfc8259`, `1.0`/`1.1`, `1.2.2`) per call
-- **Parse cache** — same template structure reuses parsed AST (256-entry LRU per format)
-
-## Next steps
-
-- [Installation](getting-started/installation.md) — install your backend
-- [Quick Start](getting-started/quick-start.md) — basic examples for each format
-- [Architecture](architecture.md) — how the parser-first pipeline works
+- [Installation](getting-started/installation.md)
+- [Quick Start](getting-started/quick-start.md)
+- [Architecture](architecture.md)

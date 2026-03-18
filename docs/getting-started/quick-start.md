@@ -96,8 +96,8 @@ text = render_text(template)
 # ...
 ```
 
-## What's next?
+## See also
 
-- [JSON usage](../usage/json.md), [TOML usage](../usage/toml.md), [YAML usage](../usage/yaml.md) — real-world examples
-- [Error Handling](../usage/error-handling.md) — how t-strings catch mistakes f-strings miss
-- [API Reference](../reference/api.md) — full function signatures and types
+- [JSON](../usage/json.md), [TOML](../usage/toml.md), [YAML](../usage/yaml.md) usage
+- [Error Handling](../usage/error-handling.md)
+- [API Reference](../reference/api.md)
