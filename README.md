@@ -1,8 +1,13 @@
 # T-strings for Structured Data
 
 [![CI](https://github.com/koxudaxi/tstring-structured-data/actions/workflows/ci.yml/badge.svg)](https://github.com/koxudaxi/tstring-structured-data/actions/workflows/ci.yml)
+[![PyPI - json-tstring](https://img.shields.io/pypi/v/json-tstring?label=json-tstring)](https://pypi.org/project/json-tstring/)
+[![PyPI - toml-tstring](https://img.shields.io/pypi/v/toml-tstring?label=toml-tstring)](https://pypi.org/project/toml-tstring/)
+[![PyPI - yaml-tstring](https://img.shields.io/pypi/v/yaml-tstring?label=yaml-tstring)](https://pypi.org/project/yaml-tstring/)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue)](https://docs.python.org/3/whatsnew/3.14.html)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+> Maintainer update: Open to opportunities. [koxudaxi.dev](https://koxudaxi.dev/?utm_source=github_readme&utm_medium=top&utm_campaign=open_to_work)
 
 Parser-first JSON, TOML, and YAML backends for
 [PEP 750 – Template Strings](https://peps.python.org/pep-0750/) t-strings.
@@ -100,6 +105,45 @@ text = render_text(template)
 JSON and TOML work the same way — `json_tstring.render_data()`,
 `toml_tstring.render_text()`, etc.
 
+## Rust backend API
+
+The Rust crates also expose parser-first `check` and `format` entry points for
+tools that already tokenize template strings themselves, such as LSP servers and
+linters.
+
+```rust
+use tstring_json::{check_template, format_template};
+use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+
+let template = TemplateInput::from_segments(vec![
+    TemplateSegment::StaticText("{\"name\": ".to_owned()),
+    TemplateSegment::Interpolation(TemplateInterpolation {
+        expression: "name".to_owned(),
+        conversion: None,
+        format_spec: String::new(),
+        interpolation_index: 0,
+        raw_source: Some("{name}".to_owned()),
+    }),
+    TemplateSegment::StaticText("}".to_owned()),
+]);
+
+check_template(&template)?;
+let text = format_template(&template)?;
+assert_eq!(text, "{\"name\": {name}}");
+```
+
+Available on each backend crate:
+
+- `check_template_with_profile(...) -> BackendResult<()>`
+- `check_template(...) -> BackendResult<()>`
+- `format_template_with_profile(...) -> BackendResult<String>`
+- `format_template(...) -> BackendResult<String>`
+
+`format_*` requires every interpolation to include `raw_source`, because the
+formatter preserves `{expr!r:spec}` verbatim instead of reconstructing it from
+parsed fields. The formatter returns canonical JSON/TOML/YAML text; it does not
+preserve comments or original whitespace.
+
 ## Setup
 
 Requires Python 3.14, `uv`, and Rust 1.94.0.
@@ -138,8 +182,8 @@ Each backend accepts a `profile` argument. Defaults:
 - TOML: `1.1` (also supports `1.0`)
 - YAML: `1.2.2`
 
-See [docs/backend-support-matrix.md](docs/backend-support-matrix.md) and
-[docs/spec-conformance-status.md](docs/spec-conformance-status.md) for details.
+See [Backend Support Matrix](https://tstring-structured-data.koxudaxi.dev/reference/backend-support-matrix/) and
+[Spec Conformance](https://tstring-structured-data.koxudaxi.dev/reference/spec-conformance-status/) for details.
 
 ## Publishing
 

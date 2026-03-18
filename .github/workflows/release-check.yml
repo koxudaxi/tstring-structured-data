@@ -12,13 +12,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-package-distributions:
+  version-check:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Validate lockstep package versions
+        run: python3 scripts/manage_versions.py check
+
+  verify-package-distributions:
+    needs: version-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -43,6 +55,7 @@ jobs:
         run: uvx twine check dist/*
 
   verify-bindings-wheels:
+    needs: version-check
     strategy:
       matrix:
         include:
@@ -63,7 +76,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7

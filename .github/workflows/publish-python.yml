@@ -1,8 +1,15 @@
 name: Publish Python Packages
 
 on:
+  push:
+    tags:
+      - "**"
   workflow_dispatch:
     inputs:
+      version:
+        description: "Release version to publish. Leave empty when running on a tag ref."
+        required: false
+        type: string
       target:
         description: "Package set to publish"
         required: true
@@ -20,21 +27,116 @@ permissions:
   contents: read
 
 jobs:
-  build-package:
-    if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && (matrix.package_path == 'tstring-core' || matrix.package_path == 'json-tstring')) || (github.event.inputs.target == 'bootstrap-2' && (matrix.package_path == 'toml-tstring' || matrix.package_path == 'yaml-tstring')) }}
-    strategy:
-      matrix:
-        package_path:
-          - tstring-core
-          - json-tstring
-          - toml-tstring
-          - yaml-tstring
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve release version
+        id: resolve
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          version="${INPUT_VERSION}"
+          if [ -z "$version" ]; then
+            if [ "$REF_TYPE" = "tag" ]; then
+              version="$REF_NAME"
+            else
+              echo "::error::Set the version input or run this workflow on a tag ref."
+              exit 1
+            fi
+          fi
+
+          version="${version#refs/tags/}"
+          version="${version#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Expected semantic version like 0.1.1, got: $version"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.resolve.outputs.target }}
+    steps:
+      - name: Resolve publish target
+        id: resolve
+        shell: bash
+        env:
+          INPUT_TARGET: ${{ github.event.inputs.target }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          target="${INPUT_TARGET}"
+          if [ -z "$target" ]; then
+            if [ "$REF_TYPE" = "tag" ]; then
+              target="all"
+            else
+              echo "::error::Set the target input or run this workflow on a tag ref."
+              exit 1
+            fi
+          fi
+
+          case "$target" in
+            bootstrap-1|bootstrap-2|all) ;;
+            *)
+              echo "::error::Expected target to be one of bootstrap-1, bootstrap-2, all; got: $target"
+              exit 1
+              ;;
+          esac
+
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+
+  version-check:
+    needs:
+      - resolve-version
+      - resolve-target
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Sync lockstep versions to release version
+        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
+
+      - name: Validate lockstep package versions
+        run: python3 scripts/manage_versions.py check --tag "${{ needs.resolve-version.outputs.version }}"
+
+  build-package:
+    needs:
+      - resolve-version
+      - resolve-target
+      - version-check
+    strategy:
+      matrix:
+        include:
+          - package_path: tstring-core
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
+          - package_path: json-tstring
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
+          - package_path: toml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
+          - package_path: yaml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Sync lockstep versions to release version
+        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -46,19 +148,26 @@ jobs:
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Build distribution
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uv build "${{ matrix.package_path }}" --out-dir dist
 
       - name: Check distribution metadata
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         run: uvx twine check dist/*
 
       - name: Upload distributions
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
           path: dist/*
 
   build-bindings-wheels:
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    needs:
+      - resolve-version
+      - resolve-target
+      - version-check
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     strategy:
       matrix:
         include:
@@ -79,7 +188,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Sync lockstep versions to release version
+        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -122,13 +234,20 @@ jobs:
           path: dist/*
 
   build-bindings-sdist:
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    needs:
+      - resolve-version
+      - resolve-target
+      - version-check
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Sync lockstep versions to release version
+        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -157,49 +276,69 @@ jobs:
         include:
           - package_path: tstring-core
             environment_name: pypi-tstring-core
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
           - package_path: json-tstring
             environment_name: pypi-json-tstring
+            publish_in_bootstrap_1: true
+            publish_in_bootstrap_2: false
           - package_path: toml-tstring
             environment_name: pypi-toml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
           - package_path: yaml-tstring
             environment_name: pypi-yaml-tstring
+            publish_in_bootstrap_1: false
+            publish_in_bootstrap_2: true
     runs-on: ubuntu-latest
-    needs: build-package
-    if: ${{ github.event.inputs.target == 'all' || (github.event.inputs.target == 'bootstrap-1' && (matrix.package_path == 'tstring-core' || matrix.package_path == 'json-tstring')) || (github.event.inputs.target == 'bootstrap-2' && (matrix.package_path == 'toml-tstring' || matrix.package_path == 'yaml-tstring')) }}
+    needs:
+      - resolve-target
+      - build-package
     environment:
       name: ${{ matrix.environment_name }}
     permissions:
       id-token: write
     steps:
       - name: Download distributions
-        uses: actions/download-artifact@v4
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.PURE_PYTHON_ARTIFACT_PREFIX }}-${{ matrix.package_path }}
           path: dist/
 
       - name: Publish to PyPI
+        if: ${{ needs.resolve-target.outputs.target == 'all' || (needs.resolve-target.outputs.target == 'bootstrap-1' && matrix.publish_in_bootstrap_1) || (needs.resolve-target.outputs.target == 'bootstrap-2' && matrix.publish_in_bootstrap_2) }}
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
 
   publish-bindings:
     runs-on: ubuntu-latest
     needs:
+      - resolve-target
       - build-bindings-wheels
       - build-bindings-sdist
-    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
+    if: ${{ needs.resolve-target.outputs.target == 'all' || needs.resolve-target.outputs.target == 'bootstrap-1' }}
     environment:
       name: pypi-tstring-bindings
     permissions:
       id-token: write
     steps:
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
       - name: Download wheel artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: bindings-wheels-*
           path: dist/
           merge-multiple: true
 
       - name: Download source distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-sdist
           path: dist/
@@ -209,3 +348,5 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

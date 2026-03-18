@@ -1,4 +1,6 @@
-use tstring_json::{JsonKeyValue, JsonStringPart, JsonValueNode, parse_template};
+use tstring_json::{
+    JsonKeyValue, JsonStringPart, JsonValueNode, check_template, format_template, parse_template,
+};
 use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
@@ -45,4 +47,72 @@ fn json_parse_errors_include_spans() {
     let error = parse_template(&template).expect_err("expected JSON parse failure");
     assert_eq!(error.diagnostics[0].code, "json.parse");
     assert!(error.diagnostics[0].span.is_some());
+}
+
+#[test]
+fn checks_valid_json_templates() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{\"name\": ".to_owned()),
+        interpolation(0, "name"),
+        TemplateSegment::StaticText(", \"message\": \"hello ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "user".to_owned(),
+            conversion: Some("r".to_owned()),
+            format_spec: ">5".to_owned(),
+            interpolation_index: 1,
+            raw_source: Some("{user!r:>5}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\"}".to_owned()),
+    ]);
+
+    check_template(&template).expect("expected check success");
+}
+
+#[test]
+fn formats_json_templates_with_raw_interpolations() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "key".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{key}".to_owned()),
+        }),
+        TemplateSegment::StaticText(": ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "value".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 1,
+            raw_source: Some("{value}".to_owned()),
+        }),
+        TemplateSegment::StaticText(", \"greeting\": \"hi ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "user".to_owned(),
+            conversion: Some("r".to_owned()),
+            format_spec: ">5".to_owned(),
+            interpolation_index: 2,
+            raw_source: Some("{user!r:>5}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\"}".to_owned()),
+    ]);
+
+    assert_eq!(
+        format_template(&template).expect("expected format success"),
+        r#"{{key}: {value}, "greeting": "hi {user!r:>5}"}"#
+    );
+}
+
+#[test]
+fn format_requires_raw_source_for_interpolations() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{\"name\": ".to_owned()),
+        interpolation(0, "name"),
+        TemplateSegment::StaticText("}".to_owned()),
+    ]);
+
+    let error = format_template(&template).expect_err("expected format failure");
+    assert_eq!(error.kind, tstring_syntax::ErrorKind::Semantic);
+    assert_eq!(error.diagnostics[0].code, "json.format");
 }
