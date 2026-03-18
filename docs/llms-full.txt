@@ -1,0 +1,1358 @@
+# T-strings for Structured Data
+
+Source: https://tstring-structured-data.koxudaxi.dev/
+
+[![CI](https://github.com/koxudaxi/tstring-structured-data/actions/workflows/ci.yml/badge.svg)](https://github.com/koxudaxi/tstring-structured-data/actions/workflows/ci.yml)
+[![PyPI - json-tstring](https://img.shields.io/pypi/v/json-tstring?label=json-tstring)](https://pypi.org/project/json-tstring/)
+[![PyPI - toml-tstring](https://img.shields.io/pypi/v/toml-tstring?label=toml-tstring)](https://pypi.org/project/toml-tstring/)
+[![PyPI - yaml-tstring](https://img.shields.io/pypi/v/yaml-tstring?label=yaml-tstring)](https://pypi.org/project/yaml-tstring/)
+[![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue)](https://docs.python.org/3/whatsnew/3.14.html)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/koxudaxi/tstring-structured-data/blob/main/LICENSE)
+
+Parser-first JSON, TOML, and YAML backends for [PEP 750](https://peps.python.org/pep-0750/) template strings.
+
+T-strings (introduced in Python 3.14) give you f-string convenience with structured access to interpolation values via [`string.templatelib.Template`](https://docs.python.org/3/library/string.templatelib.html). This project builds on that: write templates that look like the target format, and get validated text or parsed Python data back.
+
+## How it works
+
+Templates are parsed into an AST first, interpolation values are validated and inserted into slots in the AST, then the AST is rendered to text or materialized to Python objects. This parse-first approach prevents structurally invalid output and injection by construction.
+
+```python
+from yaml_tstring import render_data, render_text
+
+name = "api"
+replicas = 3
+labels = {"app": "api", "team": "platform"}
+env = {"LOG_LEVEL": "info", "WORKERS": "4"}
+ports = [8080, 8443]
+
+template = t"""\
+service:
+  name: {name}
+  replicas: {replicas}
+  labels: {labels}
+  env: {env}
+  ports: {ports}
+"""
+
+# render_data: t-string -> parsed Python data
+data = render_data(template)
+# {'service': {'name': 'api',
+#              'replicas': 3,
+#              'labels': {'app': 'api', 'team': 'platform'},
+#              'env': {'LOG_LEVEL': 'info', 'WORKERS': '4'},
+#              'ports': [8080, 8443]}}
+
+# render_text: t-string -> valid YAML text
+text = render_text(template)
+# service:
+#   name: "api"
+#   replicas: 3
+#   labels:
+#     "app": "api"
+#     "team": "platform"
+#   env:
+#     "LOG_LEVEL": "info"
+#     "WORKERS": "4"
+#   ports:
+#     - 8080
+#     - 8443
+```
+
+## Packages
+
+Pick the format you need:
+
+| Package | Format | Install |
+|---------|--------|---------|
+| [json-tstring](https://pypi.org/project/json-tstring/) | JSON | `pip install json-tstring` |
+| [toml-tstring](https://pypi.org/project/toml-tstring/) | TOML | `pip install toml-tstring` |
+| [yaml-tstring](https://pypi.org/project/yaml-tstring/) | YAML | `pip install yaml-tstring` |
+
+`tstring-core` (shared runtime) and `tstring-bindings` (native extension) are pulled in automatically.
+
+## See also
+
+- [Installation](getting-started/installation.md)
+- [Quick Start](getting-started/quick-start.md)
+- [Architecture](architecture.md)
+
+---
+
+# Installation
+
+Source: https://tstring-structured-data.koxudaxi.dev/getting-started/installation/
+
+Requires Python 3.14+ ([PEP 750](https://peps.python.org/pep-0750/) t-strings).
+
+## Install a backend
+
+Pick the format you need:
+
+=== "JSON"
+
+    ```bash
+    pip install json-tstring
+    ```
+
+=== "TOML"
+
+    ```bash
+    pip install toml-tstring
+    ```
+
+=== "YAML"
+
+    ```bash
+    pip install yaml-tstring
+    ```
+
+Or with [uv](https://docs.astral.sh/uv/):
+
+=== "JSON"
+
+    ```bash
+    uv add json-tstring
+    ```
+
+=== "TOML"
+
+    ```bash
+    uv add toml-tstring
+    ```
+
+=== "YAML"
+
+    ```bash
+    uv add yaml-tstring
+    ```
+
+Each package automatically pulls in `tstring-core` (shared runtime) and `tstring-bindings` (native extension).
+
+## Platform wheels
+
+Release automation publishes pre-built wheels for:
+
+| Platform | Architecture |
+|----------|-------------|
+| Linux | x86_64 (GNU) |
+| macOS | Apple Silicon (arm64) |
+| Windows | x86_64 |
+
+Other environments require a local Rust 1.94.0+ toolchain to build `tstring-bindings` from source.
+
+## Installing multiple backends
+
+You can install any combination of backends in the same environment:
+
+```bash
+pip install json-tstring toml-tstring yaml-tstring
+```
+
+They share the same `tstring-core` and `tstring-bindings` dependencies, so there is no conflict.
+
+---
+
+# Quick Start
+
+Source: https://tstring-structured-data.koxudaxi.dev/getting-started/quick-start/
+
+Every backend exposes three functions with the same interface:
+
+| Function | Returns |
+|----------|---------|
+| `render_data(template)` | Parsed Python objects (`dict`, `list`, `str`, `int`, etc.) |
+| `render_text(template)` | Formatted text (`str`) valid in the target format |
+| `render_result(template)` | `RenderResult` with both `.data` and `.text` |
+
+## YAML example
+
+```python
+from yaml_tstring import render_data, render_text
+
+name = "api"
+replicas = 3
+labels = {"app": "api", "team": "platform"}
+env = {"LOG_LEVEL": "info", "WORKERS": "4"}
+ports = [8080, 8443]
+
+template = t"""\
+service:
+  name: {name}
+  replicas: {replicas}
+  labels: {labels}
+  env: {env}
+  ports: {ports}
+"""
+
+# Parsed Python data
+data = render_data(template)
+# {'service': {'name': 'api', 'replicas': 3, ...}}
+
+# Valid YAML text
+text = render_text(template)
+# service:
+#   name: "api"
+#   replicas: 3
+#   ...
+```
+
+## JSON example
+
+```python
+from json_tstring import render_data, render_text
+
+user = "Ada Lovelace"
+roles = ["admin", "editor"]
+features = {"beta_dashboard": True, "audit_log": True}
+
+template = t"""\
+{
+  "user": {user},
+  "roles": {roles},
+  "features": {features}
+}
+"""
+
+data = render_data(template)
+# {'user': 'Ada Lovelace', 'roles': ['admin', 'editor'],
+#  'features': {'beta_dashboard': True, 'audit_log': True}}
+
+text = render_text(template)
+# {
+#   "user": "Ada Lovelace",
+#   "roles": ["admin", "editor"],
+#   ...
+# }
+```
+
+## TOML example
+
+```python
+from toml_tstring import render_data, render_text
+
+service_name = "billing"
+owner = "platform-team"
+retries = [1, 2, 5]
+
+template = t"""\
+[services.{service_name}]
+owner = {owner}
+
+[services.{service_name}.retry]
+schedule = {retries}
+"""
+
+data = render_data(template)
+# {'services': {'billing': {'owner': 'platform-team',
+#               'retry': {'schedule': [1, 2, 5]}}}}
+
+text = render_text(template)
+# [services.billing]
+# owner = "platform-team"
+# ...
+```
+
+## See also
+
+- [JSON](../usage/json.md), [TOML](../usage/toml.md), [YAML](../usage/yaml.md) usage
+- [Error Handling](../usage/error-handling.md)
+- [API Reference](../reference/api.md)
+
+---
+
+# JSON
+
+Source: https://tstring-structured-data.koxudaxi.dev/usage/json/
+
+The `json-tstring` package provides `render_data`, `render_text`, and `render_result` for JSON templates.
+
+## API payload example
+
+This example builds a JSON API payload with dynamic keys, nested structures, and string fragment interpolation:
+
+```python
+--8<-- "examples/json_api_payload.py"
+```
+
+### What to notice
+
+- The dynamic account id is used in a JSON key position: `"account-{account_id}"`
+- Nested `dict`/`list` values are rendered as native JSON objects and arrays
+- String fragments like `"{display_name}-{first_role}"` stay readable
+- Bare scalar assembly like `active-{first_role}` becomes a JSON string
+
+## Interpolation contexts
+
+| Context | Example | Description |
+|---------|---------|-------------|
+| Whole value | `{"key": {val}}` | Any JSON-serializable Python value |
+| Object key | `"{key}": ...` | Must be `str` |
+| String fragment | `"hello {name}"` | Inserted inside a quoted string |
+
+## Supported types
+
+Values passed to JSON interpolation slots must be JSON-serializable:
+
+- `str`, `int`, `float`, `bool`, `None`
+- `list`, `tuple` (rendered as JSON arrays)
+- `dict` (rendered as JSON objects)
+
+JSON rejects `float("inf")`, `float("nan")`, and non-string keys.
+
+## Profile
+
+JSON currently supports one profile:
+
+| Profile | Description | Default |
+|---------|-------------|---------|
+| `rfc8259` | RFC 8259 JSON | Yes |
+
+```python
+from json_tstring import render_data
+
+data = render_data(t'{"key": {value}}', profile="rfc8259")
+```
+
+---
+
+# TOML
+
+Source: https://tstring-structured-data.koxudaxi.dev/usage/toml/
+
+The `toml-tstring` package provides `render_data`, `render_text`, and `render_result` for TOML templates.
+
+## Application config example
+
+This example builds a TOML configuration with interpolated table headers, keys, datetime values, and multiline strings:
+
+```python
+--8<-- "examples/toml_app_config.py"
+```
+
+### What to notice
+
+- The service name is interpolated into table headers: `[services.{service_name}]`
+- The region is interpolated into a TOML key position: `{region} = {environment}`
+- The multiline welcome message starts life as a readable TOML string
+- `datetime`, `date`, and `time` values render as TOML-native literals
+- Bare scalar assembly like `{service_name}-{environment}` becomes a string
+
+## Interpolation contexts
+
+| Context | Example | Description |
+|---------|---------|-------------|
+| Whole value | `key = {val}` | Any TOML-representable Python value |
+| Table header | `[{name}]` | Must be `str` |
+| Key | `{key} = value` | Must be `str` |
+| String fragment | `"hello {name}"` | Inserted inside a TOML string |
+
+## Supported types
+
+- `str`, `int`, `float`, `bool`
+- `list` (rendered as TOML arrays)
+- `dict` (rendered as inline tables or nested tables)
+- `datetime`, `date`, `time` (rendered as TOML-native datetime literals)
+
+!!! warning
+    TOML has no null value — `None` is rejected. Offset-aware `time` values are also rejected.
+
+## Profiles
+
+| Profile | Description | Default |
+|---------|-------------|---------|
+| `1.1` | TOML 1.1 (inline table newlines, trailing commas, `\e`/`\xHH` escapes, times without seconds) | Yes |
+| `1.0` | TOML 1.0 | No |
+
+```python
+from toml_tstring import render_data
+
+# Use TOML 1.1 features (default)
+data = render_data(template)
+
+# Restrict to TOML 1.0 behavior
+data = render_data(template, profile="1.0")
+```
+
+---
+
+# YAML
+
+Source: https://tstring-structured-data.koxudaxi.dev/usage/yaml/
+
+The `yaml-tstring` package provides `render_data`, `render_text`, and `render_result` for YAML templates.
+
+## Docker Compose example
+
+A realistic example building Docker Compose service definitions. The builder function returns a `Template` object — the caller renders at the point of use:
+
+```python
+--8<-- "examples/yaml_docker_compose.py"
+```
+
+### What to notice
+
+- `compose_service_template()` returns a `Template`, not rendered text
+- Quoted fragments build the image ref and port mapping strings
+- `dict` values render as YAML mappings
+- `list` values render as YAML sequences
+
+## Release manifest example
+
+This example demonstrates YAML-specific features: anchors, aliases, tags, and block scalars:
+
+```python
+--8<-- "examples/yaml_release_manifest.py"
+```
+
+### What to notice
+
+- The anchor name is interpolated once and reused through an alias
+- The release name uses quoted-string fragment interpolation
+- The startup message uses YAML block-scalar assembly
+- The local tag comes from static punctuation plus an interpolated suffix
+
+## Interpolation contexts
+
+| Context | Example | Description |
+|---------|---------|-------------|
+| Whole value | `key: {val}` | Any YAML-representable Python value |
+| Map key | `{key}: value` | Must be `str` |
+| String fragment | `"{name}-{env}"` | Inserted inside a quoted string |
+| Anchor | `&{name}` | Must be `str`, non-empty, no whitespace |
+| Alias | `*{name}` | Must be `str`, non-empty, no whitespace |
+| Tag | `!{tag}` | Must be `str`, non-empty, no whitespace |
+| Block scalar | Literal (`\|`) or folded (`>`) with `{fragments}` | Scalar assembly |
+
+## Supported types
+
+- `str`, `int`, `float`, `bool`, `None`
+- `list` (rendered as YAML sequences)
+- `dict` (rendered as YAML mappings)
+
+!!! warning
+    Although YAML 1.2.2 Core Schema supports `.inf` and `.nan`, this library rejects `float("inf")` and `float("nan")` to keep output portable across parsers. Anchor/tag fragments must be non-empty and whitespace-free.
+
+## Profile
+
+| Profile | Description | Default |
+|---------|-------------|---------|
+| `1.2.2` | YAML 1.2.2 | Yes |
+
+```python
+from yaml_tstring import render_data
+
+data = render_data(template, profile="1.2.2")
+```
+
+---
+
+# Error Handling
+
+Source: https://tstring-structured-data.koxudaxi.dev/usage/error-handling/
+
+T-string backends catch errors that f-strings silently ignore and block injection by construction.
+
+## Validation errors
+
+The full example demonstrates three kinds of validation errors and injection prevention:
+
+```python
+--8<-- "examples/json_validation_errors.py"
+```
+
+## Error hierarchy
+
+All backends share the same error hierarchy from `tstring-bindings`:
+
+```
+TemplateError
+├── TemplateParseError       — template syntax is invalid
+├── TemplateSemanticError    — valid syntax but invalid semantics (e.g., wrong key type)
+└── UnrepresentableValueError — Python value can't be represented in the target format
+```
+
+Errors carry `Diagnostic` objects with source spans and expression labels for precise error reporting.
+
+## Common errors
+
+### Non-serializable values
+
+```python
+from json_tstring import render_text
+
+conn = SomeObject()
+render_text(t'{{"connection": {conn}}}')
+# => UnrepresentableValueError
+```
+
+F-strings would silently produce `repr()` output — invalid JSON.
+
+### Invalid key types
+
+```python
+from json_tstring import render_text
+
+key = 42
+render_text(t'{{{key}: "value"}}')
+# => TemplateSemanticError
+```
+
+JSON keys must be strings. T-strings enforce this at render time.
+
+### Non-finite floats
+
+```python
+from json_tstring import render_text
+
+value = float("inf")
+render_text(t'{{"metric": {value}}}')
+# => UnrepresentableValueError
+```
+
+JSON (RFC 8259) forbids `Infinity` and `NaN`. This library also rejects them for YAML to keep output portable.
+
+## Injection prevention
+
+T-strings prevent injection the same way SQL parameterized queries prevent SQL injection:
+
+```python
+import json
+from json_tstring import render_text
+
+# Malicious input
+user_input = 'admin", "role": "superuser'
+
+# f-string: VULNERABLE — attacker overrides the role
+fstring = f'{{"role": "viewer", "username": "{user_input}"}}'
+json.loads(fstring).get("role")  # => "superuser" (injected!)
+
+# t-string: SAFE — value is properly escaped
+tstring = render_text(t'{{"role": "viewer", "username": {user_input}}}')
+json.loads(tstring).get("role")  # => "viewer" (correct)
+```
+
+Values are inserted into the parsed AST, not concatenated into strings, so the attacker cannot break out of the value slot.
+
+---
+
+# Profiles
+
+Source: https://tstring-structured-data.koxudaxi.dev/usage/profiles/
+
+Each backend accepts an optional `profile` keyword argument to select the target spec version.
+
+## Profile matrix
+
+| Format | Profile | Default | Description |
+|--------|---------|---------|-------------|
+| JSON | `rfc8259` | Yes | RFC 8259 JSON |
+| TOML | `1.1` | Yes | TOML 1.1 with inline table newlines, trailing commas, `\e`/`\xHH` escapes, times without seconds |
+| TOML | `1.0` | No | TOML 1.0 strict |
+| YAML | `1.2.2` | Yes | YAML 1.2.2 |
+
+## Usage
+
+When `profile` is omitted (or `None`), the default profile for that format is used:
+
+```python
+from json_tstring import render_data
+from toml_tstring import render_data as render_toml_data
+from yaml_tstring import render_data as render_yaml_data
+
+# All use their default profiles
+json_data = render_data(t'{"key": {value}}')           # rfc8259
+toml_data = render_toml_data(t'key = {value}')          # 1.1
+yaml_data = render_yaml_data(t'key: {value}')            # 1.2.2
+```
+
+To select a specific profile:
+
+```python
+from toml_tstring import render_data
+
+# Use TOML 1.0 for compatibility
+data = render_data(template, profile="1.0")
+```
+
+## TOML 1.1 additions
+
+The `1.1` profile enables features beyond TOML 1.0:
+
+- Inline table newlines and trailing commas
+- Inline table newlines with comments
+- Basic-string `\e` escape
+- Basic-string `\xHH` escape
+- Times and datetimes without seconds
+
+If you need compatibility with TOML 1.0 tooling, pass `profile="1.0"` explicitly.
+
+## Invalid profiles
+
+Passing an unrecognized profile string raises `ValueError` immediately — before the Rust backend is invoked:
+
+```python
+from json_tstring import render_data
+
+render_data(t'{"key": {value}}', profile="draft-07")
+# => ValueError: unknown profile
+```
+
+## Conformance
+
+Each profile's conformance claims are backed by per-profile manifests and test suites. See [Backend Support Matrix](../reference/backend-support-matrix.md) and [Spec Conformance](../reference/spec-conformance-status.md) for details.
+
+---
+
+# Architecture
+
+Source: https://tstring-structured-data.koxudaxi.dev/architecture/
+
+## Overview
+
+[PEP 750](https://peps.python.org/pep-0750/) template strings for JSON, TOML, and YAML.
+The template is parsed into an AST first, interpolation values are validated and inserted into slots in the AST, then the AST is rendered to text or materialized to Python objects. This parse-first approach prevents structurally invalid output and injection by construction.
+
+```python
+from yaml_tstring import render_data
+
+name = "api"
+replicas = 3
+data = render_data(t"""\
+service:
+  name: {name}
+  replicas: {replicas}
+""")
+# => {"service": {"name": "api", "replicas": 3}}
+```
+
+## Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Python API                                             │
+│  json-tstring / toml-tstring / yaml-tstring             │
+│  render_data() / render_text() / render_result()        │
+└──────────────────────┬──────────────────────────────────┘
+                       │ PEP 750 Template
+┌──────────────────────▼──────────────────────────────────┐
+│  Python Runtime (tstring-core)                          │
+│  Tokenization, slots, error types, diagnostics          │
+└──────────────────────┬──────────────────────────────────┘
+                       │ Tokens + Python values
+┌──────────────────────▼──────────────────────────────────┐
+│  PyO3 Bindings                                          │
+│  tstring-pyo3-bindings → python-bindings                │
+│  BoundTemplate, LRU cache, pythonize                    │
+└──────────────────────┬──────────────────────────────────┘
+                       │ TemplateInput + Values
+┌──────────────────────▼──────────────────────────────────┐
+│  Rust Parsers                                           │
+│  tstring-json / tstring-toml / tstring-yaml             │
+│  ↕                                                      │
+│  tstring-syntax (spans, diagnostics, NormalizedValue)   │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Python API (json-tstring, toml-tstring, yaml-tstring)
+
+Thin wrappers over the Rust bindings. Validate the input is a `Template`, check the profile string, call into Rust, return the result. All three packages expose the same shape:
+
+```python
+render_data(template, profile=...) -> FormatValue
+render_text(template, profile=...) -> str
+render_result(template, profile=...) -> RenderResult[FormatValue]
+```
+
+### Python Runtime (tstring-core)
+
+Shared across formats:
+
+| Module | What it does |
+| --- | --- |
+| `_tokens.py` | Split templates into static text + interpolation tokens |
+| `_slots.py` | Interpolation context enum (value, key, string_fragment) |
+| `_errors.py` | Re-exports from `tstring_bindings` |
+| `_spans.py` | Source positions and spans |
+| `_diagnostics.py` | Diagnostic severity and messages |
+| `_values.py` | `RenderResult` wrapper |
+| `_types.py` | Type aliases (`JsonValue`, `TomlValue`, `YamlValue`) |
+
+### PyO3 Bindings
+
+Two crates:
+
+- **tstring-pyo3-bindings** (internal) — `BoundTemplate` captures Python values; per-format modules (`json.rs`, `yaml.rs`, `toml.rs`) handle marshaling; converts `BackendError` to Python exceptions.
+- **python-bindings** (public, ships as `tstring_bindings`) — LRU parse cache (256 entries per format), `pythonize` for `NormalizedValue` → Python, contract version check at import.
+
+The wrapper packages validate an extension contract at import:
+
+```python
+__contract_version__ = 1
+__contract_symbols__ = [
+    "TemplateError", "TemplateParseError", "TemplateSemanticError",
+    "UnrepresentableValueError",
+    "render_json", "render_json_text", "_render_json_result_payload",
+    "render_toml", "render_toml_text", "_render_toml_result_payload",
+    "render_yaml", "render_yaml_text", "_render_yaml_result_payload",
+]
+```
+
+### Rust Parsers
+
+**tstring-syntax** defines shared types:
+
+```rust
+struct SourceSpan { start: SourcePosition, end: SourcePosition }
+
+enum TemplateSegment { StaticText(String), Interpolation(TemplateInterpolation) }
+
+// Format-agnostic normalized form — all parsers produce this
+enum NormalizedValue {
+    Null, Bool(bool), Integer(BigInt), Float(NormalizedFloat),
+    String(String), Temporal(NormalizedTemporal),
+    Sequence(Vec<NormalizedValue>), Mapping(Vec<NormalizedEntry>),
+    Set(Vec<NormalizedKey>),
+}
+
+enum ErrorKind { Parse, Semantic, Unrepresentable }
+```
+
+In addition to the Python bindings, the Rust crates expose public backend APIs
+for external tools that construct `TemplateInput` directly:
+
+```rust
+check_template_with_profile(&TemplateInput, profile) -> BackendResult<()>
+check_template(&TemplateInput) -> BackendResult<()>
+format_template_with_profile(&TemplateInput, profile) -> BackendResult<String>
+format_template(&TemplateInput) -> BackendResult<String>
+```
+
+This is the integration path used by tools such as `t-linter`: Tree-sitter stays
+on the fast path for syntax highlighting, while `check` and `format` call the
+Rust backend only for strict diagnostics and canonical formatting.
+
+Format parsers build interpolation-aware ASTs and normalize via third-party libraries:
+
+| Crate | Spec | Normalization | AST Nodes |
+| --- | --- | --- | --- |
+| tstring-json | RFC 8259 | `serde_json` | Object, Array, String, Literal |
+| tstring-toml | TOML 1.0/1.1 | `toml` | Document, Table, Array, Assignment |
+| tstring-yaml | YAML 1.2.2 | `saphyr` | Stream, Document, Scalar, Mapping, Sequence |
+
+## Data Flow
+
+```
+Template (Python t-string)
+  → tokenize into static text + interpolations
+  → Rust parser: build format-specific AST with interpolation slots
+  → semantic analysis: validate + insert values into slots
+  → normalize to NormalizedValue
+  → render_data(): pythonize to Python objects
+  → render_text(): serialize back to text
+```
+
+## Project Layout
+
+```
+rust/
+  tstring-core-rs/            tstring-syntax crate (shared primitives)
+  json-tstring-rs/            JSON parser
+  yaml-tstring-rs/            YAML parser
+  toml-tstring-rs/            TOML parser
+  tstring-pyo3-bindings/      internal PyO3 adapter
+  python-bindings/            public extension module
+tstring-core/                 Python shared runtime
+json-tstring/                 Python JSON package
+toml-tstring/                 Python TOML package
+yaml-tstring/                 Python YAML package
+conformance/                  spec-map manifests and test fixtures
+examples/                     runnable examples
+```
+
+## Design Decisions
+
+### Why parse first?
+
+String concatenation can produce syntactically broken output and is vulnerable to injection. Parsing the template structure before interpolation makes both problems impossible — invalid output cannot be constructed.
+
+### Normalized intermediate representation
+
+All three parsers normalize to `NormalizedValue` before handing off to Python. This keeps each parser independent while sharing the serialization path. `BigInt` preserves integer precision; `NormalizedTemporal` handles date/time types uniformly.
+
+### Profiles
+
+Format versions are expressed as profile strings (`"rfc8259"`, `"1.0"`, `"1.1"`, `"1.2.2"`). Adding a new spec version means adding a profile, not changing existing behavior.
+
+| Format | Profiles | Default |
+| --- | --- | --- |
+| JSON | `rfc8259` | `rfc8259` |
+| TOML | `1.0`, `1.1` | `1.1` |
+| YAML | `1.2.2` | `1.2.2` |
+
+### Parse cache
+
+Template static structure (`template.strings`) is the cache key, so the same template with different interpolation values reuses the parsed AST. 256-entry LRU per format.
+
+### External tool integration
+
+When the backend is used outside the Python runtime, callers provide
+`TemplateInput` themselves. In that mode:
+
+- `check_*` validates structure and returns `BackendError` diagnostics with token spans.
+- `format_*` re-renders canonical JSON/TOML/YAML while preserving interpolation
+  source from `TemplateInterpolation.raw_source`.
+- `format_*` does not preserve comments or original layout.
+- Missing `raw_source` is treated as a semantic error because the formatter will
+  not synthesize `{expr!conversion:format_spec}` text.
+
+### Error model
+
+```
+TemplateError
+├── TemplateParseError
+├── TemplateSemanticError
+└── UnrepresentableValueError
+```
+
+Errors carry `Diagnostic` objects with source spans and expression labels.
+
+## Dependencies
+
+### Python
+
+```
+json-tstring ──┐
+toml-tstring ──┼──▶ tstring-core ──▶ tstring_bindings
+yaml-tstring ──┘
+```
+
+### Rust
+
+```
+python-bindings
+  └─ tstring-pyo3-bindings
+       ├─ tstring-json ─── tstring-syntax + serde_json
+       ├─ tstring-toml ─── tstring-syntax + toml
+       └─ tstring-yaml ─── tstring-syntax + saphyr
+```
+
+Notable versions: pyo3 0.25.1, pythonize 0.25.0, serde_json 1.0.145 (arbitrary_precision), saphyr 0.0.6, toml 0.9.8, num-bigint 0.4.6.
+
+## Interpolation Contexts
+
+| Context | Example |
+| --- | --- |
+| `value` — whole value | `{"key": {val}}` |
+| `key` — map key | `{key}: value` (YAML), `[{header}]` (TOML) |
+| `string_fragment` — inside a string | `"hello {name}"` |
+
+Allowed types differ per context; the parser validates this.
+
+## Testing
+
+Conformance tests are driven by shared manifests under `conformance/<format>/profiles/<profile>/spec-map.toml`. Both Python (`pytest`) and Rust (`cargo test`) runners use the same manifests.
+
+Additional test layers: PEP 750 binding regressions, single-pipeline smoke tests, format-specific feature tests.
+
+```bash
+uv run --group dev pytest
+PYO3_PYTHON="$PWD/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml --all
+```
+
+## Build & CI
+
+- **Python build**: uv workspace + maturin for Rust extension
+- **Rust build**: Cargo workspace
+- **Lint**: ruff (Python), cargo fmt + clippy (Rust)
+- **Type check**: ty
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `ci.yml` | push, PR | test, lint, type check, build, twine check |
+| `publish-python.yml` | tag push | wheel builds (Linux/macOS/Windows) → PyPI |
+| `publish-rust.yml` | tag push | crates.io |
+
+Distributed as five packages: `tstring-core` (pure Python), `json-tstring`, `toml-tstring`, `yaml-tstring`, and `tstring_bindings` (platform-specific wheel).
+
+## Format Constraints
+
+**JSON** — keys must be `str`; rejects `inf`/`nan`; integers keep exact text (no float coercion).
+
+**TOML** — no `None` (TOML has no null); rejects offset-aware `time`; 64-bit signed integer range. 1.1 adds inline table newlines, trailing commas, `\e`/`\xHH` escapes, times without seconds.
+
+**YAML** — rejects `inf`/`nan`; anchor/tag fragments must be non-empty and whitespace-free; supports multi-document streams, anchors, aliases, tags, directives.
+
+---
+
+# API Reference
+
+Source: https://tstring-structured-data.koxudaxi.dev/reference/api/
+
+All three packages expose the same three-function interface. Only the types and profile options differ.
+
+## Functions
+
+### `render_data`
+
+Parse a t-string template and return Python objects.
+
+=== "JSON"
+
+    ```python
+    from json_tstring import render_data
+
+    render_data(template: Template, *, profile: JsonProfile | str | None = None) -> JsonValue
+    ```
+
+=== "TOML"
+
+    ```python
+    from toml_tstring import render_data
+
+    render_data(template: Template, *, profile: TomlProfile | str | None = None) -> TomlValue
+    ```
+
+=== "YAML"
+
+    ```python
+    from yaml_tstring import render_data
+
+    render_data(template: Template, *, profile: YamlProfile | str | None = None) -> YamlValue
+    ```
+
+Parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `template` | `Template` | A PEP 750 template string (`t"..."`) |
+| `profile` | `JsonProfile \| TomlProfile \| YamlProfile \| str \| None` | Spec version profile (see [Profile types](#profile-types)). `None` uses the default for the format |
+
+Returns: Parsed Python data (`dict`, `list`, `str`, `int`, `float`, `bool`, `None`, or temporal types for TOML).
+
+### `render_text`
+
+Parse a t-string template and return valid formatted text.
+
+=== "JSON"
+
+    ```python
+    from json_tstring import render_text
+
+    render_text(template: Template, *, profile: JsonProfile | str | None = None) -> str
+    ```
+
+=== "TOML"
+
+    ```python
+    from toml_tstring import render_text
+
+    render_text(template: Template, *, profile: TomlProfile | str | None = None) -> str
+    ```
+
+=== "YAML"
+
+    ```python
+    from yaml_tstring import render_text
+
+    render_text(template: Template, *, profile: YamlProfile | str | None = None) -> str
+    ```
+
+Parameters: Same as `render_data`.
+
+Returns: A `str` containing valid JSON, TOML, or YAML text.
+
+### `render_result`
+
+Parse a t-string template and return both data and text.
+
+=== "JSON"
+
+    ```python
+    from json_tstring import render_result
+
+    render_result(template: Template, *, profile: JsonProfile | str | None = None) -> RenderResult[JsonValue]
+    ```
+
+=== "TOML"
+
+    ```python
+    from toml_tstring import render_result
+
+    render_result(template: Template, *, profile: TomlProfile | str | None = None) -> RenderResult[TomlValue]
+    ```
+
+=== "YAML"
+
+    ```python
+    from yaml_tstring import render_result
+
+    render_result(template: Template, *, profile: YamlProfile | str | None = None) -> RenderResult[YamlValue]
+    ```
+
+Parameters: Same as `render_data`.
+
+Returns: A `RenderResult` with `.data` and `.text` attributes.
+
+## Types
+
+### `RenderResult`
+
+```python
+from tstring_core import RenderResult
+
+@dataclass(frozen=True, slots=True)
+class RenderResult(Generic[TData]):
+    text: str
+    data: TData
+```
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `text` | `str` | Rendered text in the target format |
+| `data` | `TData` | Parsed Python data |
+
+### Profile types
+
+| Type | Values | Package |
+|------|--------|---------|
+| `JsonProfile` | `Literal["rfc8259"]` | `json_tstring` |
+| `TomlProfile` | `Literal["1.0", "1.1"]` | `toml_tstring` |
+| `YamlProfile` | `Literal["1.2.2"]` | `yaml_tstring` |
+
+### Value types
+
+| Type | Definition | Package |
+|------|-----------|---------|
+| `JsonValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
+| `TomlValue` | `dict \| list \| str \| int \| float \| bool \| datetime \| date \| time` | `tstring_core` |
+| `YamlValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
+
+## Exceptions
+
+All exceptions are re-exported from `tstring-bindings`:
+
+```
+TemplateError
+├── TemplateParseError
+├── TemplateSemanticError
+└── UnrepresentableValueError
+```
+
+| Exception | When |
+|-----------|------|
+| `TemplateParseError` | Template syntax is invalid for the target format |
+| `TemplateSemanticError` | Valid syntax but invalid semantics (e.g., non-string JSON key) |
+| `UnrepresentableValueError` | Python value can't be represented in the target format |
+
+Errors carry `Diagnostic` objects with source spans and expression labels.
+
+Unknown profile strings raise `ValueError` before the Rust backend is invoked.
+
+---
+
+# Backend Support Matrix
+
+Source: https://tstring-structured-data.koxudaxi.dev/reference/backend-support-matrix/
+
+Last updated: 2026-03-16
+
+This document tracks the current tested support boundary by
+format/profile pair.
+
+## Profile Matrix
+
+| Format | Profile | Status | Default | Notes |
+| --- | --- | --- | --- | --- |
+| JSON | `rfc8259` | supported | yes | Current and only JSON profile in this phase |
+| TOML | `1.0` | supported | no | Use when preserving pre-migration repo behavior matters |
+| TOML | `1.1` | supported | yes | Enables the TOML 1.1 additions currently shipped here |
+| YAML | `1.2.2` | supported | yes | Current and only YAML profile in this phase |
+
+## Shared Public Surface
+
+- `json_tstring.render_data`, `render_text`, `render_result`
+- `toml_tstring.render_data`, `render_text`, `render_result`
+- `yaml_tstring.render_data`, `render_text`, `render_result`
+- `tstring_bindings.render_json`, `render_json_text`
+- `tstring_bindings.render_toml`, `render_toml_text`
+- `tstring_bindings.render_yaml`, `render_yaml_text`
+
+Every supported public Python entrypoint accepts `profile=...`.
+Unknown profile strings raise `ValueError` in Python before the Rust backend is
+called. The Rust extension also rejects unsupported profile strings
+defensively.
+
+The extension submodule `tstring_bindings.tstring_bindings` remains present for
+internal wrapper-package imports, but it is not part of the public contract.
+
+## JSON `rfc8259`
+
+### Supported and tested
+
+- top-level scalar, object, and array values
+- whole-value, object-key, quoted-key-fragment, and string-fragment interpolation
+- RFC 8259 number forms, escape sequences, surrogate pairs, and representative examples
+- JSON data normalization through `serde_json`
+
+### Expected remaining failures
+
+- object keys that do not resolve to `str`
+- non-finite floats
+- Python values that are not representable in JSON
+
+### Out of scope
+
+- JSON5-style extensions such as comments and trailing commas
+
+## TOML `1.0`
+
+### Supported and tested
+
+- assignments, dotted keys, table headers, array-of-table headers, arrays, and inline tables
+- basic, literal, multiline basic, and multiline literal strings
+- TOML 1.0 numeric, string, date, time, and datetime forms exercised in tests
+- interpolation in keys, headers, values, and string fragments
+
+### Expected remaining failures
+
+- `None`, because TOML has no null value
+- offset-aware `time` values
+- Python values that are not representable in TOML
+
+## TOML `1.1`
+
+### Additional support beyond `1.0`
+
+- inline-table newlines and trailing commas
+- inline-table newlines with comments
+- basic-string `\e` escape support
+- basic-string `\xHH` escape support
+- times and datetimes without seconds
+
+### Notes
+
+- `1.1` is the public default profile for TOML in this repository phase.
+- Callers that need the older repository behavior should pass `profile="1.0"`
+  explicitly.
+
+## YAML `1.2.2`
+
+### Supported and tested
+
+- block and flow mappings/sequences
+- plain, single-quoted, double-quoted, and block scalars
+- anchors, aliases, tags, directives, and explicit document markers
+- multi-document streams
+- interpolation in keys, values, scalar fragments, and metadata
+- normalization through `saphyr`
+
+### Expected remaining failures
+
+- non-finite floats
+- metadata fragments that are empty or contain whitespace
+- Python values that are not representable in the current YAML backend surface
+
+### Out of scope
+
+- YAML 1.1 support
+- non-data rendering guarantees beyond the current `render_text` surface
+
+---
+
+# Spec Conformance Status
+
+Source: https://tstring-structured-data.koxudaxi.dev/reference/spec-conformance-status/
+
+Last updated: 2026-03-16
+
+This repository makes profile-scoped conformance claims rather than
+single-baseline format claims.
+
+## Current Summary
+
+| Format | Profile | Claim | Evidence basis |
+| --- | --- | --- | --- |
+| JSON | `rfc8259` | 100% | Repo manifest plus Python and Rust conformance runners |
+| TOML | `1.0` | 100% | Repo manifest plus vendored `toml-test` fixtures in the TOML 1.0 scope |
+| TOML | `1.1` | partial | Repo manifest covering the TOML 1.1 additions shipped in this phase |
+| YAML | `1.2.2` | 100% | Repo manifest plus vendored `yaml-test-suite` coverage |
+
+## Evidence Contract
+
+The source of truth is now:
+
+- `conformance/<format>/profiles.toml`
+- `conformance/<format>/profiles/<profile>/spec-map.toml`
+
+The `profiles.toml` index declares:
+
+- supported profiles
+- the default profile
+- the per-profile manifest path relative to `conformance/<format>`
+
+Python and Rust conformance runners both resolve manifests through that shared
+contract.
+
+## Scope Notes
+
+- JSON currently exposes only the `rfc8259` profile.
+- TOML now exposes both `1.0` and `1.1`, with `1.1` as the public default.
+- TOML `1.0` remains the compatibility profile for repository-owned tests and
+  examples that need the earlier behavior boundary.
+- YAML currently exposes only the `1.2.2` profile.
+- Host-language representability limits remain separate from format-spec
+  conformance. For example, TOML still has no null value and JSON/YAML still
+  reject non-finite floats in this runtime.
+
+## Verification Commands
+
+- `uv run --group dev pytest`
+- `PYO3_PYTHON="$PWD/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml --all`
+
+---
+
+# Development Setup
+
+Source: https://tstring-structured-data.koxudaxi.dev/development/setup/
+
+## Prerequisites
+
+- Python 3.14
+- [uv](https://docs.astral.sh/uv/)
+- [Rust 1.94.0+](https://www.rust-lang.org/tools/install) (for building `tstring-bindings`)
+- git
+- [prek](https://github.com/j178/prek) (for local pre-commit hooks)
+
+## Install dependencies
+
+The repository uses a root `uv` workspace plus an in-repo Rust workspace:
+
+```bash
+uv sync --group dev
+```
+
+`uv sync` installs the shared `tstring-bindings` workspace package as part of the normal dependency graph. Use `maturin develop` only when you are working on the bindings package in isolation.
+
+## Install prek
+
+```bash
+uv tool install prek
+```
+
+Or run without a permanent installation:
+
+```bash
+uvx prek --version
+```
+
+## Install git hooks
+
+From the repository root:
+
+```bash
+prek install
+```
+
+This repository uses a root `.pre-commit-config.yaml` with local hooks that run:
+
+- `ruff format --check`
+- `ruff check`
+- `ty check`
+
+The hooks are split by backend so changes usually only trigger the relevant checks.
+
+## Run hooks manually
+
+Run all hooks against the whole repository:
+
+```bash
+prek run --all-files
+```
+
+Run a single hook:
+
+```bash
+prek run json-backend-checks --all-files
+prek run toml-backend-checks --all-files
+prek run yaml-backend-checks --all-files
+```
+
+## Verification commands
+
+### Python workspace
+
+```bash
+uv sync --group dev
+uv run --group dev ruff format --check .
+uv run --group dev ruff check .
+uv run --group dev pytest
+```
+
+Conformance manifests and vendored fixture slices live under `conformance/`. The Python package test suites include their format-specific conformance cases automatically.
+
+Optional bindings-only workflow:
+
+```bash
+uv run --group dev maturin develop -F extension-module --manifest-path rust/python-bindings/Cargo.toml
+```
+
+### Rust workspace
+
+```bash
+cargo fmt --manifest-path rust/Cargo.toml --all --check
+cargo clippy --manifest-path rust/Cargo.toml --all-targets --all-features -- -D warnings
+PYO3_PYTHON="$PWD/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml --all
+```
+
+The Rust integration test suites include parser-level conformance checks driven by the same manifests used by the Python tests.
+
+## Guidelines
+
+- Keep repository content in English only.
+- Prefer small, reviewable commits.
+- The authoritative backend behavior is protected by Python end-to-end tests and Rust crate tests — keep both layers covered when changing runtime behavior.
+
+---
+
+# Conformance Vendor Sync
+
+Source: https://tstring-structured-data.koxudaxi.dev/development/conformance-vendor-sync/
+
+Use `scripts/sync_conformance_vendor.py` to refresh the vendored upstream
+conformance corpora under `conformance/toml/vendor/` and
+`conformance/yaml/vendor/`.
+
+## What it does
+
+- reads the pinned snapshot labels from the per-format manifest provenance
+- downloads the matching upstream tarballs from GitHub
+- recreates the vendored directories from scratch
+- writes `PROVENANCE.md` inside each vendored snapshot
+
+## Usage
+
+Sync every vendored corpus:
+
+```bash
+uv run python scripts/sync_conformance_vendor.py
+```
+
+Sync a single corpus:
+
+```bash
+uv run python scripts/sync_conformance_vendor.py toml
+uv run python scripts/sync_conformance_vendor.py yaml
+```
+
+## Update flow
+
+1. Update the `provenance.snapshot` value in the relevant `spec-map.toml`.
+2. Run `uv run python scripts/sync_conformance_vendor.py <format>`.
+3. Run the conformance-facing test suites.
+4. Review the regenerated `PROVENANCE.md` and vendored `LICENSE` files before committing.
+
+Do not edit vendored upstream files by hand unless the change is also reflected
+in the sync script or the manifest pin.
+
+---

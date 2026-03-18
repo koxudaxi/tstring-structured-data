@@ -2,7 +2,7 @@ name: Docs
 
 on:
   pull_request:
-    paths: ['docs/**', 'examples/**', 'zensical.toml', 'overrides/**', 'README.md', 'CONTRIBUTING.md', 'pyproject.toml', 'uv.lock']
+    paths: ['docs/**', 'examples/**', 'zensical.toml', 'overrides/**', 'README.md', 'CONTRIBUTING.md', 'pyproject.toml', 'uv.lock', 'CHANGELOG.md']
   push:
     branches:
       - main
@@ -29,6 +29,19 @@ jobs:
         python-version: "3.14"
     - name: Install dependencies
       run: uv sync --only-group docs
+    - name: Copy CHANGELOG to docs
+      run: |
+        if [ -f CHANGELOG.md ]; then
+          cp CHANGELOG.md docs/changelog.md
+        else
+          echo "# Changelog" > docs/changelog.md
+          echo "" >> docs/changelog.md
+          echo "Changelog will be available after the first release." >> docs/changelog.md
+        fi
+    - name: Update docs version
+      run: uv run python scripts/update_docs_version.py
+      env:
+        GH_TOKEN: ${{ github.token }}
     - name: build site
       run: uv run --only-group docs zensical build --clean
 

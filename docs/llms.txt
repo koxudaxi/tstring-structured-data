@@ -1,0 +1,29 @@
+# tstring-structured-data
+
+> Parser-first JSON, TOML, and YAML backends for PEP 750 template strings
+
+- [T-strings for Structured Data](https://tstring-structured-data.koxudaxi.dev/): Parser-first JSON, TOML, and YAML backends for [PEP 750](https://peps.python.org/pep-0750/) template strings.
+## Getting Started
+
+- [Installation](https://tstring-structured-data.koxudaxi.dev/getting-started/installation/): Requires Python 3.14+ ([PEP 750](https://peps.python.org/pep-0750/) t-strings).
+- [Quick Start](https://tstring-structured-data.koxudaxi.dev/getting-started/quick-start/): Every backend exposes three functions with the same interface:
+
+## Usage
+
+- [JSON](https://tstring-structured-data.koxudaxi.dev/usage/json/): The `json-tstring` package provides `render_data`, `render_text`, and `render_result` for JSON templates.
+- [TOML](https://tstring-structured-data.koxudaxi.dev/usage/toml/): The `toml-tstring` package provides `render_data`, `render_text`, and `render_result` for TOML templates.
+- [YAML](https://tstring-structured-data.koxudaxi.dev/usage/yaml/): The `yaml-tstring` package provides `render_data`, `render_text`, and `render_result` for YAML templates.
+- [Error Handling](https://tstring-structured-data.koxudaxi.dev/usage/error-handling/): T-string backends catch errors that f-strings silently ignore and block injection by construction.
+- [Profiles](https://tstring-structured-data.koxudaxi.dev/usage/profiles/): Each backend accepts an optional `profile` keyword argument to select the target spec version.
+
+- [Architecture](https://tstring-structured-data.koxudaxi.dev/architecture/)
+## Reference
+
+- [API Reference](https://tstring-structured-data.koxudaxi.dev/reference/api/): All three packages expose the same three-function interface. Only the types and profile options differ.
+- [Backend Support Matrix](https://tstring-structured-data.koxudaxi.dev/reference/backend-support-matrix/): Last updated: 2026-03-16
+- [Spec Conformance Status](https://tstring-structured-data.koxudaxi.dev/reference/spec-conformance-status/): Last updated: 2026-03-16
+
+## Optional
+
+- [Development Setup](https://tstring-structured-data.koxudaxi.dev/development/setup/)
+- [Conformance Vendor Sync](https://tstring-structured-data.koxudaxi.dev/development/conformance-vendor-sync/): Use `scripts/sync_conformance_vendor.py` to refresh the vendored upstream conformance corpora under `conformance/toml/vendor/` and
