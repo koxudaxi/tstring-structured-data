@@ -1,5 +1,7 @@
 use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
-use tstring_yaml::{YamlValueNode, check_template, format_template, parse_template};
+use tstring_yaml::{
+    YamlValueNode, check_template, format_template, parse_template, validate_template,
+};
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
     TemplateSegment::Interpolation(TemplateInterpolation {
@@ -60,6 +62,71 @@ fn checks_valid_yaml_templates() {
     ]);
 
     check_template(&template).expect("expected check success");
+}
+
+#[test]
+fn rejects_plain_scalars_that_mix_whitespace_and_interpolation() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("replicas: fdsa fff fds".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "replicas".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{replicas}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    let error = check_template(&template).expect_err("expected YAML validation failure");
+    assert_eq!(error.diagnostics[0].code, "yaml.parse");
+    assert!(
+        error
+            .message
+            .contains("Quote YAML plain scalars that mix whitespace and interpolations")
+    );
+}
+
+#[test]
+fn validates_token_like_plain_scalars_with_interpolation() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("plain: item-".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "user".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{user}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    validate_template(&template).expect("expected YAML validation success");
+}
+
+#[test]
+fn validates_plain_scalars_with_multiple_interpolations_and_no_whitespace() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("plain: ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "foo".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{foo}".to_owned()),
+        }),
+        TemplateSegment::StaticText("-".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "bar".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 1,
+            raw_source: Some("{bar}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    validate_template(&template).expect("expected YAML validation success");
 }
 
 #[test]

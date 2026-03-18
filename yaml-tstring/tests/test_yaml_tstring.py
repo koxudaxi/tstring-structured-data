@@ -1259,6 +1259,12 @@ def test_yaml_errors_cover_parse_render_and_metadata_paths() -> None:
     with pytest.raises(TemplateParseError, match="Expected ':' in YAML template"):
         render_text(Template("value: {a: 1, , b: 2}\n"))
 
+    with pytest.raises(
+        TemplateParseError,
+        match="Quote YAML plain scalars that mix whitespace and interpolations",
+    ):
+        render_text(t"value: fdsa fff fds{1}")
+
     with pytest.raises(UnrepresentableValueError, match="fragment"):
         render_text(t'label: "hi-{bad}"')
 

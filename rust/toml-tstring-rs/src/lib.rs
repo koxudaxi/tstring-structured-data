@@ -1110,11 +1110,36 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<TomlDocumentNod
     parse_template_with_profile(template, TomlProfile::default())
 }
 
+pub fn parse_validated_template_with_profile(
+    template: &TemplateInput,
+    profile: TomlProfile,
+) -> BackendResult<TomlDocumentNode> {
+    // TOML does not add format-specific post-parse validation yet. Keep the
+    // validated entry point aligned with the other backends so callers can rely
+    // on one API shape as backend-specific validation rules are introduced.
+    parse_template_with_profile(template, profile)
+}
+
+pub fn parse_validated_template(template: &TemplateInput) -> BackendResult<TomlDocumentNode> {
+    parse_validated_template_with_profile(template, TomlProfile::default())
+}
+
+pub fn validate_template_with_profile(
+    template: &TemplateInput,
+    profile: TomlProfile,
+) -> BackendResult<()> {
+    parse_validated_template_with_profile(template, profile).map(|_| ())
+}
+
+pub fn validate_template(template: &TemplateInput) -> BackendResult<()> {
+    validate_template_with_profile(template, TomlProfile::default())
+}
+
 pub fn check_template_with_profile(
     template: &TemplateInput,
     profile: TomlProfile,
 ) -> BackendResult<()> {
-    parse_template_with_profile(template, profile).map(|_| ())
+    validate_template_with_profile(template, profile)
 }
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
@@ -1125,7 +1150,7 @@ pub fn format_template_with_profile(
     template: &TemplateInput,
     profile: TomlProfile,
 ) -> BackendResult<String> {
-    let document = parse_template_with_profile(template, profile)?;
+    let document = parse_validated_template_with_profile(template, profile)?;
     format_toml_document(template, &document)
 }
 
@@ -1390,7 +1415,7 @@ fn normalize_time(value: toml::value::Time) -> NormalizedTime {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_template, TomlKeySegmentValue, TomlStatementNode, TomlValueNode};
+    use super::{TomlKeySegmentValue, TomlStatementNode, TomlValueNode, parse_template};
     use pyo3::prelude::*;
     use tstring_pyo3_bindings::{extract_template, toml::render_document};
     use tstring_syntax::{BackendError, BackendResult, ErrorKind};
@@ -1901,10 +1926,12 @@ mod tests {
             );
             let special_floats = table["special_float_array"].as_array().expect("array");
             assert!(special_floats[0].as_float().expect("float").is_infinite());
-            assert!(special_floats[1]
-                .as_float()
-                .expect("float")
-                .is_sign_negative());
+            assert!(
+                special_floats[1]
+                    .as_float()
+                    .expect("float")
+                    .is_sign_negative()
+            );
             assert!(special_floats[2].as_float().expect("float").is_nan());
             assert_eq!(
                 table["special_float_nested_arrays"]
@@ -1916,18 +1943,24 @@ mod tests {
             let special_float_deeper_arrays = table["special_float_deeper_arrays"]
                 .as_array()
                 .expect("array");
-            assert!(special_float_deeper_arrays[0][0][0]
-                .as_float()
-                .expect("float")
-                .is_infinite());
-            assert!(special_float_deeper_arrays[1][0][0]
-                .as_float()
-                .expect("float")
-                .is_sign_negative());
-            assert!(special_float_deeper_arrays[2][0][0]
-                .as_float()
-                .expect("float")
-                .is_nan());
+            assert!(
+                special_float_deeper_arrays[0][0][0]
+                    .as_float()
+                    .expect("float")
+                    .is_infinite()
+            );
+            assert!(
+                special_float_deeper_arrays[1][0][0]
+                    .as_float()
+                    .expect("float")
+                    .is_sign_negative()
+            );
+            assert!(
+                special_float_deeper_arrays[2][0][0]
+                    .as_float()
+                    .expect("float")
+                    .is_nan()
+            );
             assert_eq!(
                 table["upper_exp_nested_mixed"]
                     .as_array()
@@ -1935,14 +1968,18 @@ mod tests {
                     .len(),
                 2
             );
-            assert!(table["special_float_inline_table"]["pos"]
-                .as_float()
-                .expect("float")
-                .is_infinite());
-            assert!(table["special_float_inline_table"]["nan"]
-                .as_float()
-                .expect("float")
-                .is_nan());
+            assert!(
+                table["special_float_inline_table"]["pos"]
+                    .as_float()
+                    .expect("float")
+                    .is_infinite()
+            );
+            assert!(
+                table["special_float_inline_table"]["nan"]
+                    .as_float()
+                    .expect("float")
+                    .is_nan()
+            );
             assert_eq!(
                 table["special_float_mixed_nested"]
                     .as_array()
@@ -2026,9 +2063,10 @@ mod tests {
                 Err(err) => err,
             };
             assert_eq!(err.kind, ErrorKind::Parse);
-            assert!(err
-                .message
-                .contains("single-line basic strings cannot contain newlines"));
+            assert!(
+                err.message
+                    .contains("single-line basic strings cannot contain newlines")
+            );
         });
     }
 
@@ -2920,30 +2958,42 @@ mod tests {
                 rendered.text,
                 "special_float_inline_table = { pos = +inf, neg = -inf, nan = nan }\nspecial_float_mixed_nested = [[+inf, -inf], [nan]]"
             );
-            assert!(rendered.data["special_float_inline_table"]["pos"]
-                .as_float()
-                .expect("pos float")
-                .is_infinite());
-            assert!(rendered.data["special_float_inline_table"]["neg"]
-                .as_float()
-                .expect("neg float")
-                .is_sign_negative());
-            assert!(rendered.data["special_float_inline_table"]["nan"]
-                .as_float()
-                .expect("nan float")
-                .is_nan());
-            assert!(rendered.data["special_float_mixed_nested"][0][0]
-                .as_float()
-                .expect("nested pos")
-                .is_infinite());
-            assert!(rendered.data["special_float_mixed_nested"][0][1]
-                .as_float()
-                .expect("nested neg")
-                .is_sign_negative());
-            assert!(rendered.data["special_float_mixed_nested"][1][0]
-                .as_float()
-                .expect("nested nan")
-                .is_nan());
+            assert!(
+                rendered.data["special_float_inline_table"]["pos"]
+                    .as_float()
+                    .expect("pos float")
+                    .is_infinite()
+            );
+            assert!(
+                rendered.data["special_float_inline_table"]["neg"]
+                    .as_float()
+                    .expect("neg float")
+                    .is_sign_negative()
+            );
+            assert!(
+                rendered.data["special_float_inline_table"]["nan"]
+                    .as_float()
+                    .expect("nan float")
+                    .is_nan()
+            );
+            assert!(
+                rendered.data["special_float_mixed_nested"][0][0]
+                    .as_float()
+                    .expect("nested pos")
+                    .is_infinite()
+            );
+            assert!(
+                rendered.data["special_float_mixed_nested"][0][1]
+                    .as_float()
+                    .expect("nested neg")
+                    .is_sign_negative()
+            );
+            assert!(
+                rendered.data["special_float_mixed_nested"][1][0]
+                    .as_float()
+                    .expect("nested nan")
+                    .is_nan()
+            );
         });
     }
 

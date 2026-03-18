@@ -2048,11 +2048,36 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<YamlStreamNode>
     parse_template_with_profile(template, YamlProfile::default())
 }
 
+pub fn parse_validated_template_with_profile(
+    template: &TemplateInput,
+    profile: YamlProfile,
+) -> BackendResult<YamlStreamNode> {
+    let stream = parse_template_with_profile(template, profile)?;
+    validate_template_stream(&stream)?;
+    Ok(stream)
+}
+
+pub fn parse_validated_template(template: &TemplateInput) -> BackendResult<YamlStreamNode> {
+    parse_validated_template_with_profile(template, YamlProfile::default())
+}
+
+pub fn validate_template_with_profile(
+    template: &TemplateInput,
+    profile: YamlProfile,
+) -> BackendResult<()> {
+    let stream = parse_template_with_profile(template, profile)?;
+    validate_template_stream(&stream)
+}
+
+pub fn validate_template(template: &TemplateInput) -> BackendResult<()> {
+    validate_template_with_profile(template, YamlProfile::default())
+}
+
 pub fn check_template_with_profile(
     template: &TemplateInput,
     profile: YamlProfile,
 ) -> BackendResult<()> {
-    parse_template_with_profile(template, profile).map(|_| ())
+    validate_template_with_profile(template, profile)
 }
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
@@ -2063,12 +2088,80 @@ pub fn format_template_with_profile(
     template: &TemplateInput,
     profile: YamlProfile,
 ) -> BackendResult<String> {
-    let stream = parse_template_with_profile(template, profile)?;
+    let stream = parse_validated_template_with_profile(template, profile)?;
     format_yaml_stream(template, &stream)
 }
 
 pub fn format_template(template: &TemplateInput) -> BackendResult<String> {
     format_template_with_profile(template, YamlProfile::default())
+}
+
+fn validate_template_stream(stream: &YamlStreamNode) -> BackendResult<()> {
+    for document in &stream.documents {
+        validate_value_node(&document.value)?;
+    }
+    Ok(())
+}
+
+fn validate_value_node(node: &YamlValueNode) -> BackendResult<()> {
+    match node {
+        YamlValueNode::Scalar(YamlScalarNode::Plain(node)) => validate_plain_scalar_node(node),
+        YamlValueNode::Mapping(node) => {
+            for entry in &node.entries {
+                validate_key_node(&entry.key)?;
+                validate_value_node(&entry.value)?;
+            }
+            Ok(())
+        }
+        YamlValueNode::Sequence(node) => {
+            for item in &node.items {
+                validate_value_node(item)?;
+            }
+            Ok(())
+        }
+        YamlValueNode::Decorated(node) => validate_value_node(&node.value),
+        YamlValueNode::Interpolation(_)
+        | YamlValueNode::Scalar(
+            YamlScalarNode::DoubleQuoted(_)
+            | YamlScalarNode::SingleQuoted(_)
+            | YamlScalarNode::Block(_)
+            | YamlScalarNode::Alias(_),
+        ) => Ok(()),
+    }
+}
+
+fn validate_key_node(node: &YamlKeyNode) -> BackendResult<()> {
+    match &node.value {
+        YamlKeyValue::Scalar(YamlScalarNode::Plain(node)) => validate_plain_scalar_node(node),
+        YamlKeyValue::Complex(node) => validate_value_node(node),
+        YamlKeyValue::Interpolation(_)
+        | YamlKeyValue::Scalar(
+            YamlScalarNode::DoubleQuoted(_)
+            | YamlScalarNode::SingleQuoted(_)
+            | YamlScalarNode::Block(_)
+            | YamlScalarNode::Alias(_),
+        ) => Ok(()),
+    }
+}
+
+fn validate_plain_scalar_node(node: &YamlPlainScalarNode) -> BackendResult<()> {
+    let has_interpolation = node
+        .chunks
+        .iter()
+        .any(|chunk| matches!(chunk, YamlChunk::Interpolation(_)));
+    let has_whitespace_text = node.chunks.iter().any(|chunk| {
+        matches!(chunk, YamlChunk::Text(text) if text.value.chars().any(char::is_whitespace))
+    });
+
+    if has_interpolation && has_whitespace_text {
+        return Err(BackendError::parse_at(
+            "yaml.parse",
+            "Quote YAML plain scalars that mix whitespace and interpolations.",
+            Some(node.span.clone()),
+        ));
+    }
+
+    Ok(())
 }
 
 pub fn normalize_documents_with_profile(
