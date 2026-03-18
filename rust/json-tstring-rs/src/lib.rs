@@ -600,11 +600,33 @@ pub fn parse_template(template: &TemplateInput) -> BackendResult<JsonDocumentNod
     parse_template_with_profile(template, JsonProfile::default())
 }
 
+pub fn parse_validated_template_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<JsonDocumentNode> {
+    parse_template_with_profile(template, profile)
+}
+
+pub fn parse_validated_template(template: &TemplateInput) -> BackendResult<JsonDocumentNode> {
+    parse_validated_template_with_profile(template, JsonProfile::default())
+}
+
+pub fn validate_template_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<()> {
+    parse_validated_template_with_profile(template, profile).map(|_| ())
+}
+
+pub fn validate_template(template: &TemplateInput) -> BackendResult<()> {
+    validate_template_with_profile(template, JsonProfile::default())
+}
+
 pub fn check_template_with_profile(
     template: &TemplateInput,
     profile: JsonProfile,
 ) -> BackendResult<()> {
-    parse_template_with_profile(template, profile).map(|_| ())
+    validate_template_with_profile(template, profile)
 }
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
@@ -615,7 +637,7 @@ pub fn format_template_with_profile(
     template: &TemplateInput,
     profile: JsonProfile,
 ) -> BackendResult<String> {
-    let document = parse_template_with_profile(template, profile)?;
+    let document = parse_validated_template_with_profile(template, profile)?;
     format_json_value(template, &document.value)
 }
 
@@ -774,9 +796,9 @@ fn normalize_number(number: &serde_json::Number) -> BackendResult<NormalizedValu
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_template, JsonKeyValue, JsonStringPart, JsonValueNode};
+    use super::{JsonKeyValue, JsonStringPart, JsonValueNode, parse_template};
     use pyo3::prelude::*;
-    use serde_json::{json, Map, Number, Value};
+    use serde_json::{Map, Number, Value, json};
     use tstring_pyo3_bindings::{extract_template, json::render_document};
     use tstring_syntax::{BackendError, BackendResult, ErrorKind};
 

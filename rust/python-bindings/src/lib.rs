@@ -160,7 +160,7 @@ fn parse_json_template(
 ) -> PyResult<Arc<JsonDocumentNode>> {
     json_parse_cache()
         .get_or_try_insert_with(&template_cache_key(template, profile.as_str()), || {
-            tstring_json::parse_template_with_profile(template.input(), profile)
+            tstring_json::parse_validated_template_with_profile(template.input(), profile)
         })
         .map_err(backend_error_to_py)
 }
@@ -171,7 +171,7 @@ fn parse_toml_template(
 ) -> PyResult<Arc<TomlDocumentNode>> {
     toml_parse_cache()
         .get_or_try_insert_with(&template_cache_key(template, profile.as_str()), || {
-            tstring_toml::parse_template_with_profile(template.input(), profile)
+            tstring_toml::parse_validated_template_with_profile(template.input(), profile)
         })
         .map_err(backend_error_to_py)
 }

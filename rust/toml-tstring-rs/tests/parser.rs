@@ -1,6 +1,7 @@
 use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
 use tstring_toml::{
-    check_template, format_template, parse_template, TomlStatementNode, TomlValueNode,
+    TomlStatementNode, TomlValueNode, check_template, format_template, parse_template,
+    parse_validated_template, validate_template,
 };
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
@@ -62,6 +63,24 @@ fn checks_valid_toml_templates() {
     ]);
 
     check_template(&template).expect("expected check success");
+}
+
+#[test]
+fn validates_toml_templates_with_supported_interpolations() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("title = ".to_owned()),
+        TemplateSegment::Interpolation(TemplateInterpolation {
+            expression: "title".to_owned(),
+            conversion: None,
+            format_spec: String::new(),
+            interpolation_index: 0,
+            raw_source: Some("{title}".to_owned()),
+        }),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    validate_template(&template).expect("expected validate success");
+    parse_validated_template(&template).expect("expected validated parse success");
 }
 
 #[test]

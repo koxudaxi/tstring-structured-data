@@ -1,5 +1,6 @@
 use tstring_json::{
     JsonKeyValue, JsonStringPart, JsonValueNode, check_template, format_template, parse_template,
+    parse_validated_template, validate_template,
 };
 use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
 
@@ -66,6 +67,18 @@ fn checks_valid_json_templates() {
     ]);
 
     check_template(&template).expect("expected check success");
+}
+
+#[test]
+fn validates_json_templates_with_supported_interpolations() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{\"name\": ".to_owned()),
+        interpolation(0, "name"),
+        TemplateSegment::StaticText(", \"active\": true}".to_owned()),
+    ]);
+
+    validate_template(&template).expect("expected validate success");
+    parse_validated_template(&template).expect("expected validated parse success");
 }
 
 #[test]
