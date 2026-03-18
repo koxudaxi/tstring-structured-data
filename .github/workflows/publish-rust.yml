@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  RELEASE_VERSION: ${{ github.ref_name }}
+
 concurrency:
   group: publish-rust-${{ github.ref_name }}
   cancel-in-progress: false
@@ -21,8 +24,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
+
       - name: Validate lockstep versions against tag
-        run: python3 scripts/manage_versions.py check --tag "${{ github.ref_name }}"
+        run: python3 scripts/manage_versions.py check --tag "${{ env.RELEASE_VERSION }}"
 
   package-check:
     needs: version-check
@@ -32,6 +38,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -49,6 +58,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -68,6 +80,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -91,6 +106,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
@@ -109,6 +127,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Sync lockstep versions to release tag
+        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
