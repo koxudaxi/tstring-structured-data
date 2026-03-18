@@ -13,7 +13,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Validate lockstep versions against tag
+        run: python3 scripts/manage_versions.py check --tag "${{ github.ref_name }}"
+
   package-check:
+    needs: version-check
     runs-on: ubuntu-latest
     permissions:
       contents: read

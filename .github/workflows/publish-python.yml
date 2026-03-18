@@ -20,7 +20,19 @@ permissions:
   contents: read
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Validate lockstep package versions
+        run: python3 scripts/manage_versions.py check
+
   build-package:
+    needs: version-check
     strategy:
       matrix:
         include:
@@ -68,6 +80,7 @@ jobs:
           path: dist/*
 
   build-bindings-wheels:
+    needs: version-check
     if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
     strategy:
       matrix:
@@ -132,6 +145,7 @@ jobs:
           path: dist/*
 
   build-bindings-sdist:
+    needs: version-check
     if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'bootstrap-1' }}
     runs-on: ubuntu-latest
     permissions:
