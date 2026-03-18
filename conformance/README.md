@@ -54,4 +54,4 @@ PYO3_PYTHON="$PWD/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml 
 
 The TOML and YAML upstream corpora are synchronized by
 `../scripts/sync_conformance_vendor.py`. See
-`../docs/conformance-vendor-sync.md` for the update workflow.
+the [Conformance Vendor Sync](https://tstring-structured-data.koxudaxi.dev/development/conformance-vendor-sync/) documentation for the update workflow.
