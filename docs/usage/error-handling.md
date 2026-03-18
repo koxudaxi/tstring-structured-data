@@ -59,7 +59,7 @@ render_text(t'{{"metric": {value}}}')
 # => UnrepresentableValueError
 ```
 
-JSON and YAML forbid `Infinity` and `NaN`.
+JSON (RFC 8259) forbids `Infinity` and `NaN`. This library also rejects them for YAML to keep output portable across consumers.
 
 ## Injection prevention
 

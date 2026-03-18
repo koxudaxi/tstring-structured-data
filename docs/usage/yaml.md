@@ -51,7 +51,7 @@ This example demonstrates YAML-specific features: anchors, aliases, tags, and bl
 - `dict` (rendered as YAML mappings)
 
 !!! warning
-    YAML rejects `float("inf")` and `float("nan")`. Anchor/tag fragments must be non-empty and whitespace-free.
+    Although YAML 1.2.2 Core Schema supports `.inf` and `.nan`, this library rejects `float("inf")` and `float("nan")` to keep output portable. Anchor/tag fragments must be non-empty and whitespace-free.
 
 ## Profile
 
