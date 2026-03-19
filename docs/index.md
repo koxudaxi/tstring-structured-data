@@ -73,4 +73,5 @@ Pick the format you need:
 
 - [Installation](getting-started/installation.md)
 - [Quick Start](getting-started/quick-start.md)
+- [Editor Integration (t-linter)](usage/editor-integration.md)
 - [Architecture](architecture.md)

@@ -17,6 +17,7 @@ nav = [
     { "YAML" = "usage/yaml.md" },
     { "Error Handling" = "usage/error-handling.md" },
     { "Profiles" = "usage/profiles.md" },
+    { "Editor Integration (t-linter)" = "usage/editor-integration.md" },
   ]},
   { "Architecture" = "architecture.md" },
   { "Reference" = [

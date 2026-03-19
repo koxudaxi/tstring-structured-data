@@ -105,6 +105,36 @@ text = render_text(template)
 JSON and TOML work the same way — `json_tstring.render_data()`,
 `toml_tstring.render_text()`, etc.
 
+## Editor integration (t-linter)
+
+[t-linter](https://github.com/koxudaxi/t-linter) is a linter, formatter, and
+LSP server for t-strings. It uses the same Rust backends as this project for
+`check` and `format`.
+
+```bash
+pip install t-linter
+```
+
+Check templates for errors:
+
+```bash
+t-linter check src/
+```
+
+Format JSON / TOML / YAML template literals:
+
+```bash
+t-linter format src/
+```
+
+Start the LSP server for real-time editor diagnostics:
+
+```bash
+t-linter lsp
+```
+
+A [VSCode extension](https://marketplace.visualstudio.com/items?itemName=koxudaxi.t-linter) is also available.
+
 ## Rust backend API
 
 The Rust crates also expose parser-first `check` and `format` entry points for
@@ -195,3 +225,4 @@ when a version tag is pushed.
 - [PEP 750 – Template Strings](https://peps.python.org/pep-0750/)
 - [`string.templatelib` — Template String Support](https://docs.python.org/3/library/string.templatelib.html)
 - [What's New In Python 3.14](https://docs.python.org/3/whatsnew/3.14.html)
+- [t-linter](https://github.com/koxudaxi/t-linter) — Linter, formatter, and LSP for t-strings
