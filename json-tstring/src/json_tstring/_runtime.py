@@ -18,7 +18,9 @@ _REQUIRED_SYMBOLS = {
 
 
 class _RenderJson(Protocol):
-    def __call__(self, template: JsonTemplate, *, profile: JsonProfile) -> JsonValue: ...
+    def __call__(
+        self, template: JsonTemplate, *, profile: JsonProfile
+    ) -> JsonValue: ...
 
 
 class _RenderJsonText(Protocol):

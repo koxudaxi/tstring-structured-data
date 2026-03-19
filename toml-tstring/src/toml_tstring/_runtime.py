@@ -18,7 +18,9 @@ _REQUIRED_SYMBOLS = {
 
 
 class _RenderToml(Protocol):
-    def __call__(self, template: TomlTemplate, *, profile: TomlProfile) -> TomlValue: ...
+    def __call__(
+        self, template: TomlTemplate, *, profile: TomlProfile
+    ) -> TomlValue: ...
 
 
 class _RenderTomlText(Protocol):

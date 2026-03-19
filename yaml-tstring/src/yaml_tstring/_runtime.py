@@ -18,7 +18,9 @@ _REQUIRED_SYMBOLS = {
 
 
 class _RenderYaml(Protocol):
-    def __call__(self, template: YamlTemplate, *, profile: YamlProfile) -> YamlValue: ...
+    def __call__(
+        self, template: YamlTemplate, *, profile: YamlProfile
+    ) -> YamlValue: ...
 
 
 class _RenderYamlText(Protocol):
