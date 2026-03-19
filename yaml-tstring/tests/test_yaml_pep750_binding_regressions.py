@@ -2,8 +2,7 @@ from __future__ import annotations
 
 # ruff: noqa: E501
 from string.templatelib import Template
-from typing import Any
-from typing import Annotated, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 import pytest
 
