@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from string.templatelib import Template
-from typing import Literal, Protocol, TypeIs, cast
+from typing import Annotated, Literal, Protocol, TypeIs, cast
 
 from tstring_bindings import tstring_bindings as _bindings
 from tstring_core import RenderResult, TomlValue
 
 type TomlProfile = Literal["1.0", "1.1"]
+type TomlTemplate = Annotated[Template, "toml"]
 
 _CONTRACT_VERSION = 1
 _REQUIRED_SYMBOLS = {
@@ -17,16 +18,18 @@ _REQUIRED_SYMBOLS = {
 
 
 class _RenderToml(Protocol):
-    def __call__(self, template: Template, *, profile: TomlProfile) -> TomlValue: ...
+    def __call__(
+        self, template: TomlTemplate, *, profile: TomlProfile
+    ) -> TomlValue: ...
 
 
 class _RenderTomlText(Protocol):
-    def __call__(self, template: Template, *, profile: TomlProfile) -> str: ...
+    def __call__(self, template: TomlTemplate, *, profile: TomlProfile) -> str: ...
 
 
 class _RenderTomlResultPayload(Protocol):
     def __call__(
-        self, template: Template, *, profile: TomlProfile
+        self, template: TomlTemplate, *, profile: TomlProfile
     ) -> tuple[str, TomlValue]: ...
 
 
@@ -60,7 +63,7 @@ def _is_template(value: object) -> TypeIs[Template]:
     return isinstance(value, Template)
 
 
-def _validate_template(template: object, api_name: str) -> Template:
+def _validate_template(template: object, api_name: str) -> TomlTemplate:
     if _is_template(template):
         return template
     raise TypeError(
@@ -82,19 +85,21 @@ def _resolve_profile(profile: TomlProfile | str | None) -> TomlProfile:
 
 
 def render_data(
-    template: Template, *, profile: TomlProfile | str | None = None
+    template: TomlTemplate, *, profile: TomlProfile | str | None = None
 ) -> TomlValue:
     checked = _validate_template(template, "render_data")
     return _render_toml(checked, profile=_resolve_profile(profile))
 
 
-def render_text(template: Template, *, profile: TomlProfile | str | None = None) -> str:
+def render_text(
+    template: TomlTemplate, *, profile: TomlProfile | str | None = None
+) -> str:
     checked = _validate_template(template, "render_text")
     return _render_toml_text(checked, profile=_resolve_profile(profile))
 
 
 def render_result(
-    template: Template, *, profile: TomlProfile | str | None = None
+    template: TomlTemplate, *, profile: TomlProfile | str | None = None
 ) -> RenderResult[TomlValue]:
     checked = _validate_template(template, "render_result")
     text, data = _render_toml_result_payload(checked, profile=_resolve_profile(profile))

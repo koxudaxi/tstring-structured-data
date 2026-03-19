@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from string.templatelib import Template
-from typing import Any
+from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 import pytest
 
@@ -12,6 +12,10 @@ from json_tstring import TemplateParseError as JsonTemplateParseError
 from json_tstring import render_data as render_json_data
 from json_tstring import render_result as render_json_result
 from json_tstring import render_text as render_json_text
+
+
+def _template_hint_value(hint: object) -> object:
+    return getattr(hint, "__value__", hint)
 
 
 class DualRenderValue:
@@ -118,6 +122,15 @@ def test_json_binding_errors_expose_structured_diagnostics() -> None:
     _assert_exception_metadata(
         parse_info.value, expected_code="json.parse", has_span=True
     )
+
+
+def test_json_render_apis_expose_annotated_template_parameters() -> None:
+    for render_api in (render_json_data, render_json_text, render_json_result):
+        template_hint = _template_hint_value(
+            get_type_hints(render_api, include_extras=True)["template"]
+        )
+        assert get_origin(template_hint) is Annotated
+        assert get_args(template_hint) == (Template, "json")
 
 
 def test_tstring_core_deprecated_root_helpers_remain_compatible() -> None:

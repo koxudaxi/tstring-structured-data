@@ -2,10 +2,16 @@ from __future__ import annotations
 
 # ruff: noqa: E501
 from datetime import UTC, datetime
+from string.templatelib import Template
+from typing import Annotated, get_args, get_origin, get_type_hints
 
 import pytest
 
 from toml_tstring import TemplateParseError, render_data, render_result, render_text
+
+
+def _template_hint_value(hint: object) -> object:
+    return getattr(hint, "__value__", hint)
 
 
 class DualRenderValue:
@@ -84,3 +90,12 @@ def test_toml_metadata_path_materialization_reports_parse_errors_consistently() 
 
     with pytest.raises(TemplateParseError, match="invalid formatted TOML payload"):
         render_result(t"value = {broken!r}\n")
+
+
+def test_toml_render_apis_expose_annotated_template_parameters() -> None:
+    for render_api in (render_data, render_text, render_result):
+        template_hint = _template_hint_value(
+            get_type_hints(render_api, include_extras=True)["template"]
+        )
+        assert get_origin(template_hint) is Annotated
+        assert get_args(template_hint) == (Template, "toml")

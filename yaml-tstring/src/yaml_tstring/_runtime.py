@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from string.templatelib import Template
-from typing import Literal, Protocol, TypeIs, cast
+from typing import Annotated, Literal, Protocol, TypeIs, cast
 
 from tstring_bindings import tstring_bindings as _bindings
 from tstring_core import RenderResult, YamlValue
 
 type YamlProfile = Literal["1.2.2"]
+type YamlTemplate = Annotated[Template, "yaml"]
 
 _CONTRACT_VERSION = 1
 _REQUIRED_SYMBOLS = {
@@ -17,16 +18,18 @@ _REQUIRED_SYMBOLS = {
 
 
 class _RenderYaml(Protocol):
-    def __call__(self, template: Template, *, profile: YamlProfile) -> YamlValue: ...
+    def __call__(
+        self, template: YamlTemplate, *, profile: YamlProfile
+    ) -> YamlValue: ...
 
 
 class _RenderYamlText(Protocol):
-    def __call__(self, template: Template, *, profile: YamlProfile) -> str: ...
+    def __call__(self, template: YamlTemplate, *, profile: YamlProfile) -> str: ...
 
 
 class _RenderYamlResultPayload(Protocol):
     def __call__(
-        self, template: Template, *, profile: YamlProfile
+        self, template: YamlTemplate, *, profile: YamlProfile
     ) -> tuple[str, YamlValue]: ...
 
 
@@ -60,7 +63,7 @@ def _is_template(value: object) -> TypeIs[Template]:
     return isinstance(value, Template)
 
 
-def _validate_template(template: object, api_name: str) -> Template:
+def _validate_template(template: object, api_name: str) -> YamlTemplate:
     if _is_template(template):
         return template
     raise TypeError(
@@ -78,19 +81,21 @@ def _resolve_profile(profile: YamlProfile | str | None) -> YamlProfile:
 
 
 def render_data(
-    template: Template, *, profile: YamlProfile | str | None = None
+    template: YamlTemplate, *, profile: YamlProfile | str | None = None
 ) -> YamlValue:
     checked = _validate_template(template, "render_data")
     return _render_yaml(checked, profile=_resolve_profile(profile))
 
 
-def render_text(template: Template, *, profile: YamlProfile | str | None = None) -> str:
+def render_text(
+    template: YamlTemplate, *, profile: YamlProfile | str | None = None
+) -> str:
     checked = _validate_template(template, "render_text")
     return _render_yaml_text(checked, profile=_resolve_profile(profile))
 
 
 def render_result(
-    template: Template, *, profile: YamlProfile | str | None = None
+    template: YamlTemplate, *, profile: YamlProfile | str | None = None
 ) -> RenderResult[YamlValue]:
     checked = _validate_template(template, "render_result")
     text, data = _render_yaml_result_payload(checked, profile=_resolve_profile(profile))
