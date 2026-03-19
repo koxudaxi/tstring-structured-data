@@ -15,6 +15,7 @@
 - [YAML](https://tstring-structured-data.koxudaxi.dev/usage/yaml/): The `yaml-tstring` package provides `render_data`, `render_text`, and `render_result` for YAML templates.
 - [Error Handling](https://tstring-structured-data.koxudaxi.dev/usage/error-handling/): T-string backends catch errors that f-strings silently ignore and block injection by construction.
 - [Profiles](https://tstring-structured-data.koxudaxi.dev/usage/profiles/): Each backend accepts an optional `profile` keyword argument to select the target spec version.
+- [Editor Integration (t-linter)](https://tstring-structured-data.koxudaxi.dev/usage/editor-integration/): [t-linter](https://github.com/koxudaxi/t-linter) is a linter, formatter, and LSP server for Python template strings (PEP 750 t-strings). It uses th...
 
 - [Architecture](https://tstring-structured-data.koxudaxi.dev/architecture/)
 ## Reference
