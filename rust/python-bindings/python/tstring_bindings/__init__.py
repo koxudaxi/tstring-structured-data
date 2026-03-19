@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from string.templatelib import Template
-from typing import Protocol, cast
+from typing import Annotated, Protocol, cast
 
 from . import tstring_bindings as _bindings
 from ._profiles import (
@@ -14,29 +14,33 @@ from ._profiles import (
 )
 from ._types import JsonValue, TomlValue, YamlValue
 
+type JsonTemplate = Annotated[Template, "json"]
+type TomlTemplate = Annotated[Template, "toml"]
+type YamlTemplate = Annotated[Template, "yaml"]
+
 
 class _RenderJson(Protocol):
-    def __call__(self, template: Template, profile: JsonProfile) -> JsonValue: ...
+    def __call__(self, template: JsonTemplate, profile: JsonProfile) -> JsonValue: ...
 
 
 class _RenderJsonText(Protocol):
-    def __call__(self, template: Template, profile: JsonProfile) -> str: ...
+    def __call__(self, template: JsonTemplate, profile: JsonProfile) -> str: ...
 
 
 class _RenderToml(Protocol):
-    def __call__(self, template: Template, profile: TomlProfile) -> TomlValue: ...
+    def __call__(self, template: TomlTemplate, profile: TomlProfile) -> TomlValue: ...
 
 
 class _RenderTomlText(Protocol):
-    def __call__(self, template: Template, profile: TomlProfile) -> str: ...
+    def __call__(self, template: TomlTemplate, profile: TomlProfile) -> str: ...
 
 
 class _RenderYaml(Protocol):
-    def __call__(self, template: Template, profile: YamlProfile) -> YamlValue: ...
+    def __call__(self, template: YamlTemplate, profile: YamlProfile) -> YamlValue: ...
 
 
 class _RenderYamlText(Protocol):
-    def __call__(self, template: Template, profile: YamlProfile) -> str: ...
+    def __call__(self, template: YamlTemplate, profile: YamlProfile) -> str: ...
 
 
 class _BindingsContract(Protocol):
@@ -101,37 +105,37 @@ _render_yaml_text = _EXTENSION.render_yaml_text
 
 
 def render_json(
-    template: Template, *, profile: JsonProfile | str | None = None
+    template: JsonTemplate, *, profile: JsonProfile | str | None = None
 ) -> JsonValue:
     return _render_json(template, resolve_json_profile(profile))
 
 
 def render_json_text(
-    template: Template, *, profile: JsonProfile | str | None = None
+    template: JsonTemplate, *, profile: JsonProfile | str | None = None
 ) -> str:
     return _render_json_text(template, resolve_json_profile(profile))
 
 
 def render_toml(
-    template: Template, *, profile: TomlProfile | str | None = None
+    template: TomlTemplate, *, profile: TomlProfile | str | None = None
 ) -> TomlValue:
     return _render_toml(template, resolve_toml_profile(profile))
 
 
 def render_toml_text(
-    template: Template, *, profile: TomlProfile | str | None = None
+    template: TomlTemplate, *, profile: TomlProfile | str | None = None
 ) -> str:
     return _render_toml_text(template, resolve_toml_profile(profile))
 
 
 def render_yaml(
-    template: Template, *, profile: YamlProfile | str | None = None
+    template: YamlTemplate, *, profile: YamlProfile | str | None = None
 ) -> YamlValue:
     return _render_yaml(template, resolve_yaml_profile(profile))
 
 
 def render_yaml_text(
-    template: Template, *, profile: YamlProfile | str | None = None
+    template: YamlTemplate, *, profile: YamlProfile | str | None = None
 ) -> str:
     return _render_yaml_text(template, resolve_yaml_profile(profile))
 
