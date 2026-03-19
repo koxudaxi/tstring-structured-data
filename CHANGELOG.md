@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 This changelog is automatically generated from GitHub Releases.
 
 ---
+## [0.2.1](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.1) - 2026-03-19
+
+## What's Changed
+* Annotate structured template render parameters by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/26
+
+
+**Full Changelog**: https://github.com/koxudaxi/tstring-structured-data/compare/0.2.0...0.2.1
+
+---
+
 ## [0.2.0](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.0) - 2026-03-18
 
 ## Breaking Changes
