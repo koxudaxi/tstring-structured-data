@@ -27,4 +27,4 @@ pythonize = "0.25.0"
 serde_json = { version = "1.0.145", features = ["arbitrary_precision"] }
 saphyr = "0.0.6"
 saphyr-parser = "0.0.6"
-toml = "0.9.8"
+toml = "1.0.7"
