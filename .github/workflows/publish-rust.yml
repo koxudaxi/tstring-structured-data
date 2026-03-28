@@ -43,7 +43,7 @@ jobs:
         run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Verify Rust crates package cleanly
         run: cargo package --allow-dirty --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
@@ -63,7 +63,7 @@ jobs:
         run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Publish tstring-syntax
         env:
@@ -85,7 +85,7 @@ jobs:
         run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Wait for tstring-syntax to appear on crates.io
         run: python3 .github/scripts/wait_for_crate.py tstring-syntax
@@ -110,7 +110,7 @@ jobs:
         run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Publish tstring-toml
         env:
@@ -132,7 +132,7 @@ jobs:
         run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Publish tstring-yaml
         env:
