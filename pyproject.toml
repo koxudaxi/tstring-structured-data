@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "json-tstring>=0.1.0",
-    "toml-tstring>=0.1.0",
+    "toml-tstring>=0.2.1",
     "tstring-core>=0.1.0",
     "yaml-tstring>=0.1.0",
 ]
@@ -22,7 +22,7 @@ dev = [
     "maturin>=1.8.0",
     "pytest>=8.4.0",
     "ruff>=0.11.0",
-    "toml-tstring>=0.1.0",
+    "toml-tstring>=0.2.1",
     "tstring-core>=0.1.0",
     "ty>=0.0.23",
     "yaml-tstring>=0.1.0",
