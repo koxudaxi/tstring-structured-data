@@ -56,7 +56,7 @@ jobs:
 
     - name: Comment Preview URL on PR
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const previewUrl = 'https://pr-${{ github.event.pull_request.number }}.tstring-structured-data.pages.dev';
