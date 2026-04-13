@@ -8,7 +8,7 @@ dependencies = [
     "json-tstring>=0.1.0",
     "toml-tstring>=0.1.0",
     "tstring-core>=0.1.0",
-    "yaml-tstring>=0.1.0",
+    "yaml-tstring>=0.2.1",
 ]
 
 [build-system]
@@ -25,7 +25,7 @@ dev = [
     "toml-tstring>=0.1.0",
     "tstring-core>=0.1.0",
     "ty>=0.0.23",
-    "yaml-tstring>=0.1.0",
+    "yaml-tstring>=0.2.1",
 ]
 docs = [
     "zensical>=0.0.15",
