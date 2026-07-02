@@ -11,7 +11,7 @@ fn benchmark_json_metadata_render(criterion: &mut Criterion) {
         let module = PyModule::from_code(
             py,
             pyo3::ffi::c_str!(
-                "value=3.14159\nlabel='service'\nitems=[1, 2, 3]\nmeta={'region': 'us-east-1', 'count': 3}\ntemplate=t'{\"format\": {value:.2f}, \"label\": \"{label!s}\", \"items\": {items}, \"meta\": {meta}, \"fragment\": \"pi={value:.2f}\"}'\n"
+                "value=3.14159\nlabel='service'\nitems=[1, 2, 3]\nmeta={'region': 'us-east-1', 'count': 3}\ntemplate=t'{{\"format\": {value:.2f}, \"label\": \"{label!s}\", \"items\": {items}, \"meta\": {meta}, \"fragment\": \"pi={value:.2f}\"}}'\n"
             ),
             pyo3::ffi::c_str!("bench_json_metadata.py"),
             pyo3::ffi::c_str!("bench_json_metadata"),
@@ -26,7 +26,13 @@ fn benchmark_json_metadata_render(criterion: &mut Criterion) {
     criterion.bench_function("json_metadata_render", |bench| {
         bench.iter(|| {
             Python::with_gil(|py| {
-                json_backend::render_document(py, &template, node.as_ref()).unwrap();
+                json_backend::render_document(
+                    py,
+                    &template,
+                    tstring_json::JsonProfile::default(),
+                    node.as_ref(),
+                )
+                .unwrap();
             });
         });
     });
@@ -52,7 +58,13 @@ fn benchmark_toml_metadata_render(criterion: &mut Criterion) {
     criterion.bench_function("toml_metadata_render", |bench| {
         bench.iter(|| {
             Python::with_gil(|py| {
-                toml_backend::render_document(py, &template, node.as_ref()).unwrap();
+                toml_backend::render_document(
+                    py,
+                    &template,
+                    tstring_toml::TomlProfile::default(),
+                    node.as_ref(),
+                )
+                .unwrap();
             });
         });
     });
@@ -78,7 +90,13 @@ fn benchmark_toml_dynamic_header_render(criterion: &mut Criterion) {
     criterion.bench_function("toml_dynamic_header_render", |bench| {
         bench.iter(|| {
             Python::with_gil(|py| {
-                toml_backend::render_document(py, &template, node.as_ref()).unwrap();
+                toml_backend::render_document(
+                    py,
+                    &template,
+                    tstring_toml::TomlProfile::default(),
+                    node.as_ref(),
+                )
+                .unwrap();
             });
         });
     });
@@ -104,7 +122,13 @@ fn benchmark_yaml_metadata_render(criterion: &mut Criterion) {
     criterion.bench_function("yaml_metadata_render", |bench| {
         bench.iter(|| {
             Python::with_gil(|py| {
-                yaml_backend::render_document(py, &template, node.as_ref()).unwrap();
+                yaml_backend::render_document(
+                    py,
+                    &template,
+                    tstring_yaml::YamlProfile::default(),
+                    node.as_ref(),
+                )
+                .unwrap();
             });
         });
     });
