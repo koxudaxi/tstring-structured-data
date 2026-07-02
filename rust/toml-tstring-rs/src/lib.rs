@@ -1,9 +1,12 @@
 use tstring_syntax::{
-    BackendError, BackendResult, NormalizedDate, NormalizedDocument, NormalizedEntry,
-    NormalizedFloat, NormalizedKey, NormalizedLocalDateTime, NormalizedOffsetDateTime,
-    NormalizedStream, NormalizedTemporal, NormalizedTime, NormalizedValue, SourcePosition,
-    SourceSpan, StreamItem, TemplateInput,
+    BackendError, BackendResult, InterpolationTypeRequirement, NormalizedDate, NormalizedDocument,
+    NormalizedEntry, NormalizedFloat, NormalizedKey, NormalizedLocalDateTime,
+    NormalizedOffsetDateTime, NormalizedStream, NormalizedTemporal, NormalizedTime,
+    NormalizedValue, SourcePosition, SourceSpan, StreamItem, TemplateInput,
 };
+
+const TOML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]";
+const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TomlProfile {
@@ -1144,6 +1147,107 @@ pub fn check_template_with_profile(
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
     check_template_with_profile(template, TomlProfile::default())
+}
+
+pub fn interpolation_type_requirements_with_profile(
+    template: &TemplateInput,
+    profile: TomlProfile,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    let document = parse_validated_template_with_profile(template, profile)?;
+    let mut requirements = Vec::new();
+    collect_toml_document_type_requirements(&document, &mut requirements);
+    requirements.sort_by_key(|requirement| requirement.interpolation_index);
+    Ok(requirements)
+}
+
+pub fn interpolation_type_requirements(
+    template: &TemplateInput,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    interpolation_type_requirements_with_profile(template, TomlProfile::default())
+}
+
+fn collect_toml_document_type_requirements(
+    document: &TomlDocumentNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for statement in &document.statements {
+        match statement {
+            TomlStatementNode::Assignment(node) => {
+                collect_toml_key_path_type_requirements(&node.key_path, requirements);
+                collect_toml_value_type_requirements(&node.value, requirements);
+            }
+            TomlStatementNode::TableHeader(node) => {
+                collect_toml_key_path_type_requirements(&node.key_path, requirements);
+            }
+            TomlStatementNode::ArrayTableHeader(node) => {
+                collect_toml_key_path_type_requirements(&node.key_path, requirements);
+            }
+        }
+    }
+}
+
+fn collect_toml_key_path_type_requirements(
+    key_path: &TomlKeyPathNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for segment in &key_path.segments {
+        match &segment.value {
+            TomlKeySegmentValue::Bare(_) => {}
+            TomlKeySegmentValue::String(node) => {
+                collect_toml_string_type_requirements(node, requirements);
+            }
+            TomlKeySegmentValue::Interpolation(node) => {
+                requirements.push(InterpolationTypeRequirement::new(
+                    node.interpolation_index,
+                    STRING_PYTHON_TYPE,
+                    "toml key",
+                ));
+            }
+        }
+    }
+}
+
+fn collect_toml_value_type_requirements(
+    value: &TomlValueNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match value {
+        TomlValueNode::String(node) => collect_toml_string_type_requirements(node, requirements),
+        TomlValueNode::Literal(_) => {}
+        TomlValueNode::Interpolation(node) => {
+            requirements.push(InterpolationTypeRequirement::new(
+                node.interpolation_index,
+                TOML_VALUE_PYTHON_TYPE,
+                "toml value",
+            ));
+        }
+        TomlValueNode::Array(node) => {
+            for item in &node.items {
+                collect_toml_value_type_requirements(item, requirements);
+            }
+        }
+        TomlValueNode::InlineTable(node) => {
+            for entry in &node.entries {
+                collect_toml_key_path_type_requirements(&entry.key_path, requirements);
+                collect_toml_value_type_requirements(&entry.value, requirements);
+            }
+        }
+    }
+}
+
+fn collect_toml_string_type_requirements(
+    string: &TomlStringNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for chunk in &string.chunks {
+        if let TomlStringPart::Interpolation(node) = chunk {
+            requirements.push(InterpolationTypeRequirement::new(
+                node.interpolation_index,
+                STRING_PYTHON_TYPE,
+                "toml string fragment",
+            ));
+        }
+    }
 }
 
 pub fn format_template_with_profile(
