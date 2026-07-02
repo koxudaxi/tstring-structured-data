@@ -1,8 +1,10 @@
 use tstring_json::{
-    JsonKeyValue, JsonStringPart, JsonValueNode, check_template, format_template, parse_template,
-    parse_validated_template, validate_template,
+    JsonKeyValue, JsonStringPart, JsonValueNode, check_template, format_template,
+    interpolation_type_requirements, parse_template, parse_validated_template, validate_template,
 };
-use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+use tstring_syntax::{
+    InterpolationTypeRequirement, TemplateInput, TemplateInterpolation, TemplateSegment,
+};
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
     TemplateSegment::Interpolation(TemplateInterpolation {
@@ -67,6 +69,32 @@ fn checks_valid_json_templates() {
     ]);
 
     check_template(&template).expect("expected check success");
+}
+
+#[test]
+fn reports_contextual_interpolation_type_requirements() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{".to_owned()),
+        interpolation(0, "key"),
+        TemplateSegment::StaticText(": ".to_owned()),
+        interpolation(1, "value"),
+        TemplateSegment::StaticText(", \"label\": \"".to_owned()),
+        interpolation(2, "label"),
+        TemplateSegment::StaticText("\"}".to_owned()),
+    ]);
+
+    assert_eq!(
+        interpolation_type_requirements(&template).expect("expected type requirements"),
+        vec![
+            InterpolationTypeRequirement::new(0, "str", "json object key"),
+            InterpolationTypeRequirement::new(
+                1,
+                "str | int | float | bool | None | dict[str, object] | list[object]",
+                "json value"
+            ),
+            InterpolationTypeRequirement::new(2, "str", "json string fragment"),
+        ]
+    );
 }
 
 #[test]

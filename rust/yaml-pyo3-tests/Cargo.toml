@@ -13,5 +13,5 @@ version.workspace = true
 [dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize"] }
 saphyr = { workspace = true }
-tstring-pyo3-bindings = { version = "0.1.0", path = "../tstring-pyo3-bindings" }
-tstring-yaml = { version = "0.1.0", path = "../yaml-tstring-rs" }
+tstring-pyo3-bindings = { version = "0.2.1", path = "../tstring-pyo3-bindings" }
+tstring-yaml = { version = "0.2.1", path = "../yaml-tstring-rs" }

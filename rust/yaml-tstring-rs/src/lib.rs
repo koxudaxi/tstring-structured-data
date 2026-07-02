@@ -3,10 +3,13 @@ use saphyr_parser::{ScalarStyle, Tag};
 use std::borrow::Cow;
 use std::str::FromStr;
 use tstring_syntax::{
-    BackendError, BackendResult, NormalizedDocument, NormalizedEntry, NormalizedFloat,
-    NormalizedKey, NormalizedKeyEntry, NormalizedStream, NormalizedValue, SourcePosition,
-    SourceSpan, StreamItem, TemplateInput,
+    BackendError, BackendResult, InterpolationTypeRequirement, NormalizedDocument, NormalizedEntry,
+    NormalizedFloat, NormalizedKey, NormalizedKeyEntry, NormalizedStream, NormalizedValue,
+    SourcePosition, SourceSpan, StreamItem, TemplateInput,
 };
+
+const YAML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]";
+const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum YamlProfile {
@@ -2082,6 +2085,172 @@ pub fn check_template_with_profile(
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
     check_template_with_profile(template, YamlProfile::default())
+}
+
+pub fn interpolation_type_requirements_with_profile(
+    template: &TemplateInput,
+    profile: YamlProfile,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    let stream = parse_validated_template_with_profile(template, profile)?;
+    let mut requirements = Vec::new();
+    collect_yaml_stream_type_requirements(&stream, &mut requirements);
+    requirements.sort_by_key(|requirement| requirement.interpolation_index);
+    Ok(requirements)
+}
+
+pub fn interpolation_type_requirements(
+    template: &TemplateInput,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    interpolation_type_requirements_with_profile(template, YamlProfile::default())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum YamlInterpolationContext {
+    Value,
+    MappingKey,
+}
+
+fn collect_yaml_stream_type_requirements(
+    stream: &YamlStreamNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for document in &stream.documents {
+        collect_yaml_value_type_requirements(
+            &document.value,
+            YamlInterpolationContext::Value,
+            requirements,
+        );
+    }
+}
+
+fn collect_yaml_value_type_requirements(
+    value: &YamlValueNode,
+    context: YamlInterpolationContext,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match value {
+        YamlValueNode::Scalar(node) => {
+            collect_yaml_scalar_type_requirements(node, "yaml scalar fragment", requirements);
+        }
+        YamlValueNode::Interpolation(node) => {
+            requirements.push(yaml_value_type_requirement(node, context));
+        }
+        YamlValueNode::Mapping(node) => {
+            for entry in &node.entries {
+                collect_yaml_key_type_requirements(&entry.key, requirements);
+                collect_yaml_value_type_requirements(
+                    &entry.value,
+                    YamlInterpolationContext::Value,
+                    requirements,
+                );
+            }
+        }
+        YamlValueNode::Sequence(node) => {
+            for item in &node.items {
+                collect_yaml_value_type_requirements(item, context, requirements);
+            }
+        }
+        YamlValueNode::Decorated(node) => {
+            if let Some(tag) = &node.tag {
+                collect_yaml_chunk_type_requirements(
+                    &tag.chunks,
+                    "yaml metadata fragment",
+                    requirements,
+                );
+            }
+            if let Some(anchor) = &node.anchor {
+                collect_yaml_chunk_type_requirements(
+                    &anchor.chunks,
+                    "yaml metadata fragment",
+                    requirements,
+                );
+            }
+            collect_yaml_value_type_requirements(&node.value, context, requirements);
+        }
+    }
+}
+
+fn collect_yaml_key_type_requirements(
+    key: &YamlKeyNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match &key.value {
+        YamlKeyValue::Scalar(node) => {
+            collect_yaml_scalar_type_requirements(node, "yaml scalar fragment", requirements);
+        }
+        YamlKeyValue::Interpolation(node) => {
+            requirements.push(yaml_value_type_requirement(
+                node,
+                YamlInterpolationContext::MappingKey,
+            ));
+        }
+        YamlKeyValue::Complex(node) => {
+            collect_yaml_value_type_requirements(
+                node,
+                YamlInterpolationContext::MappingKey,
+                requirements,
+            );
+        }
+    }
+}
+
+fn collect_yaml_scalar_type_requirements(
+    scalar: &YamlScalarNode,
+    description: &'static str,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match scalar {
+        YamlScalarNode::Plain(node) => {
+            collect_yaml_chunk_type_requirements(&node.chunks, description, requirements);
+        }
+        YamlScalarNode::DoubleQuoted(node) => {
+            collect_yaml_chunk_type_requirements(&node.chunks, description, requirements);
+        }
+        YamlScalarNode::SingleQuoted(node) => {
+            collect_yaml_chunk_type_requirements(&node.chunks, description, requirements);
+        }
+        YamlScalarNode::Block(node) => {
+            collect_yaml_chunk_type_requirements(&node.chunks, description, requirements);
+        }
+        YamlScalarNode::Alias(node) => {
+            collect_yaml_chunk_type_requirements(
+                &node.chunks,
+                "yaml metadata fragment",
+                requirements,
+            );
+        }
+    }
+}
+
+fn collect_yaml_chunk_type_requirements(
+    chunks: &[YamlChunk],
+    description: &'static str,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for chunk in chunks {
+        if let YamlChunk::Interpolation(node) = chunk {
+            requirements.push(InterpolationTypeRequirement::new(
+                node.interpolation_index,
+                STRING_PYTHON_TYPE,
+                description,
+            ));
+        }
+    }
+}
+
+fn yaml_value_type_requirement(
+    node: &YamlInterpolationNode,
+    context: YamlInterpolationContext,
+) -> InterpolationTypeRequirement {
+    let description = match context {
+        YamlInterpolationContext::Value => "yaml value",
+        YamlInterpolationContext::MappingKey => "yaml mapping key",
+    };
+    InterpolationTypeRequirement::new(
+        node.interpolation_index,
+        YAML_VALUE_PYTHON_TYPE,
+        description,
+    )
 }
 
 pub fn format_template_with_profile(

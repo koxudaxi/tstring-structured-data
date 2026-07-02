@@ -1,5 +1,7 @@
 use tstring_json as backend_json;
-use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+use tstring_syntax::{
+    InterpolationTypeRequirement, TemplateInput, TemplateInterpolation, TemplateSegment,
+};
 use tstring_toml as backend_toml;
 use tstring_yaml as backend_yaml;
 
@@ -54,6 +56,18 @@ fn toml_backend_public_api_smoke_test() {
 
     backend_toml::check_template(&template).expect("expected toml check success");
     assert_eq!(
+        backend_toml::interpolation_type_requirements(&template)
+            .expect("expected toml type requirements"),
+        vec![
+            InterpolationTypeRequirement::new(
+                0,
+                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]",
+                "toml value"
+            ),
+            InterpolationTypeRequirement::new(1, "str", "toml string fragment"),
+        ]
+    );
+    assert_eq!(
         backend_toml::format_template(&template).expect("expected toml format success"),
         "title = {title}\nmessage = \"Hello {user!s}\""
     );
@@ -78,6 +92,23 @@ fn yaml_backend_public_api_smoke_test() {
     ]);
 
     backend_yaml::check_template(&template).expect("expected yaml check success");
+    assert_eq!(
+        backend_yaml::interpolation_type_requirements(&template)
+            .expect("expected yaml type requirements"),
+        vec![
+            InterpolationTypeRequirement::new(
+                0,
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "yaml value"
+            ),
+            InterpolationTypeRequirement::new(
+                1,
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "yaml value"
+            ),
+            InterpolationTypeRequirement::new(2, "str", "yaml scalar fragment"),
+        ]
+    );
     assert_eq!(
         backend_yaml::format_template(&template).expect("expected yaml format success"),
         "name: {name}\nitems:\n  - {item}\nmessage: \"Hello {user!r:>5}\""

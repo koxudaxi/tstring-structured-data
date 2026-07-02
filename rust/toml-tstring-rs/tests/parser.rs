@@ -1,7 +1,9 @@
-use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+use tstring_syntax::{
+    InterpolationTypeRequirement, TemplateInput, TemplateInterpolation, TemplateSegment,
+};
 use tstring_toml::{
-    TomlStatementNode, TomlValueNode, check_template, format_template, parse_template,
-    parse_validated_template, validate_template,
+    TomlStatementNode, TomlValueNode, check_template, format_template,
+    interpolation_type_requirements, parse_template, parse_validated_template, validate_template,
 };
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
@@ -81,6 +83,41 @@ fn validates_toml_templates_with_supported_interpolations() {
 
     validate_template(&template).expect("expected validate success");
     parse_validated_template(&template).expect("expected validated parse success");
+}
+
+#[test]
+fn reports_contextual_interpolation_type_requirements() {
+    let template = TemplateInput::from_segments(vec![
+        interpolation(0, "table"),
+        TemplateSegment::StaticText(".title = ".to_owned()),
+        interpolation(1, "value"),
+        TemplateSegment::StaticText("\nmessage = \"Hello ".to_owned()),
+        interpolation(2, "fragment"),
+        TemplateSegment::StaticText("\"\nmeta = { ".to_owned()),
+        interpolation(3, "inline_key"),
+        TemplateSegment::StaticText(" = ".to_owned()),
+        interpolation(4, "inline_value"),
+        TemplateSegment::StaticText(" }\n".to_owned()),
+    ]);
+
+    assert_eq!(
+        interpolation_type_requirements(&template).expect("expected type requirements"),
+        vec![
+            InterpolationTypeRequirement::new(0, "str", "toml key"),
+            InterpolationTypeRequirement::new(
+                1,
+                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]",
+                "toml value"
+            ),
+            InterpolationTypeRequirement::new(2, "str", "toml string fragment"),
+            InterpolationTypeRequirement::new(3, "str", "toml key"),
+            InterpolationTypeRequirement::new(
+                4,
+                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]",
+                "toml value"
+            ),
+        ]
+    );
 }
 
 #[test]

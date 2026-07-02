@@ -725,7 +725,7 @@ checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
 
 [[package]]
 name = "tstring-backend-e2e-tests"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "tstring-json",
  "tstring-syntax",
@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "tstring-bindings"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "pyo3",
  "pythonize",
@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "tstring-json"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "toml",
@@ -760,7 +760,7 @@ dependencies = [
 
 [[package]]
 name = "tstring-pyo3-bindings"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "criterion",
  "pyo3",
@@ -776,14 +776,14 @@ dependencies = [
 
 [[package]]
 name = "tstring-syntax"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "num-bigint",
 ]
 
 [[package]]
 name = "tstring-toml"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "toml",
@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "tstring-yaml"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "saphyr",
  "saphyr-parser",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "tstring-yaml-pyo3-tests"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "pyo3",
  "saphyr",

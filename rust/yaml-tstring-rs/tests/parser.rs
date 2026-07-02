@@ -1,6 +1,9 @@
-use tstring_syntax::{TemplateInput, TemplateInterpolation, TemplateSegment};
+use tstring_syntax::{
+    InterpolationTypeRequirement, TemplateInput, TemplateInterpolation, TemplateSegment,
+};
 use tstring_yaml::{
-    YamlValueNode, check_template, format_template, parse_template, validate_template,
+    YamlValueNode, check_template, format_template, interpolation_type_requirements,
+    parse_template, validate_template,
 };
 
 fn interpolation(index: usize, expression: &str) -> TemplateSegment {
@@ -127,6 +130,63 @@ fn validates_plain_scalars_with_multiple_interpolations_and_no_whitespace() {
     ]);
 
     validate_template(&template).expect("expected YAML validation success");
+}
+
+#[test]
+fn reports_contextual_interpolation_type_requirements() {
+    let template = TemplateInput::from_segments(vec![
+        interpolation(0, "key"),
+        TemplateSegment::StaticText(": ".to_owned()),
+        interpolation(1, "value"),
+        TemplateSegment::StaticText("\nmessage: \"Hello ".to_owned()),
+        interpolation(2, "fragment"),
+        TemplateSegment::StaticText("\"\ntagged: !<tag:".to_owned()),
+        interpolation(3, "tag"),
+        TemplateSegment::StaticText("> ".to_owned()),
+        interpolation(4, "tagged_value"),
+        TemplateSegment::StaticText("\n".to_owned()),
+    ]);
+
+    assert_eq!(
+        interpolation_type_requirements(&template).expect("expected type requirements"),
+        vec![
+            InterpolationTypeRequirement::new(
+                0,
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "yaml mapping key"
+            ),
+            InterpolationTypeRequirement::new(
+                1,
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "yaml value"
+            ),
+            InterpolationTypeRequirement::new(2, "str", "yaml scalar fragment"),
+            InterpolationTypeRequirement::new(3, "str", "yaml metadata fragment"),
+            InterpolationTypeRequirement::new(
+                4,
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "yaml value"
+            ),
+        ]
+    );
+}
+
+#[test]
+fn reports_complex_key_interpolation_requirements_in_key_context() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("? [".to_owned()),
+        interpolation(0, "item"),
+        TemplateSegment::StaticText("]\n: ok\n".to_owned()),
+    ]);
+
+    assert_eq!(
+        interpolation_type_requirements(&template).expect("expected type requirements"),
+        vec![InterpolationTypeRequirement::new(
+            0,
+            "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+            "yaml mapping key"
+        )]
+    );
 }
 
 #[test]
