@@ -1,9 +1,14 @@
 use serde_json::Value;
 use std::str::FromStr;
 use tstring_syntax::{
-    BackendError, BackendResult, NormalizedDocument, NormalizedFloat, NormalizedKey,
-    NormalizedStream, NormalizedValue, SourcePosition, SourceSpan, StreamItem, TemplateInput,
+    BackendError, BackendResult, InterpolationTypeRequirement, NormalizedDocument, NormalizedFloat,
+    NormalizedKey, NormalizedStream, NormalizedValue, SourcePosition, SourceSpan, StreamItem,
+    TemplateInput,
 };
+
+const JSON_VALUE_PYTHON_TYPE: &str =
+    "str | int | float | bool | None | dict[str, object] | list[object]";
+const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum JsonProfile {
@@ -634,6 +639,99 @@ pub fn check_template_with_profile(
 
 pub fn check_template(template: &TemplateInput) -> BackendResult<()> {
     check_template_with_profile(template, JsonProfile::default())
+}
+
+pub fn interpolation_type_requirements_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    let document = parse_template_with_profile(template, profile)?;
+    let mut requirements = Vec::new();
+    collect_json_value_type_requirements(&document.value, &mut requirements);
+    requirements.sort_by_key(|requirement| requirement.interpolation_index);
+    Ok(requirements)
+}
+
+pub fn interpolation_type_requirements(
+    template: &TemplateInput,
+) -> BackendResult<Vec<InterpolationTypeRequirement>> {
+    interpolation_type_requirements_with_profile(template, JsonProfile::default())
+}
+
+fn collect_json_value_type_requirements(
+    value: &JsonValueNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match value {
+        JsonValueNode::String(node) => {
+            collect_json_string_type_requirements(node, requirements);
+        }
+        JsonValueNode::Literal(_) => {}
+        JsonValueNode::Interpolation(node) => {
+            requirements.push(json_type_requirement(node));
+        }
+        JsonValueNode::Object(node) => {
+            for member in &node.members {
+                collect_json_key_type_requirements(&member.key, requirements);
+                collect_json_value_type_requirements(&member.value, requirements);
+            }
+        }
+        JsonValueNode::Array(node) => {
+            for item in &node.items {
+                collect_json_value_type_requirements(item, requirements);
+            }
+        }
+    }
+}
+
+fn collect_json_key_type_requirements(
+    key: &JsonKeyNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    match &key.value {
+        JsonKeyValue::String(node) => {
+            collect_json_string_type_requirements(node, requirements);
+        }
+        JsonKeyValue::Interpolation(node) => {
+            requirements.push(json_type_requirement(node));
+        }
+    }
+}
+
+fn collect_json_string_type_requirements(
+    string: &JsonStringNode,
+    requirements: &mut Vec<InterpolationTypeRequirement>,
+) {
+    for chunk in &string.chunks {
+        if let JsonStringPart::Interpolation(node) = chunk {
+            requirements.push(json_type_requirement(node));
+        }
+    }
+}
+
+fn json_type_requirement(node: &JsonInterpolationNode) -> InterpolationTypeRequirement {
+    match node.role.as_str() {
+        "value" => InterpolationTypeRequirement::new(
+            node.interpolation_index,
+            JSON_VALUE_PYTHON_TYPE,
+            "json value",
+        ),
+        "key" => InterpolationTypeRequirement::new(
+            node.interpolation_index,
+            STRING_PYTHON_TYPE,
+            "json object key",
+        ),
+        "string_fragment" => InterpolationTypeRequirement::new(
+            node.interpolation_index,
+            STRING_PYTHON_TYPE,
+            "json string fragment",
+        ),
+        _ => InterpolationTypeRequirement::new(
+            node.interpolation_index,
+            JSON_VALUE_PYTHON_TYPE,
+            "json interpolation",
+        ),
+    }
 }
 
 pub fn format_template_with_profile(

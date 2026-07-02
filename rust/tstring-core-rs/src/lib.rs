@@ -176,6 +176,28 @@ impl std::error::Error for BackendError {}
 
 pub type BackendResult<T> = Result<T, BackendError>;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InterpolationTypeRequirement {
+    pub interpolation_index: usize,
+    pub expected_python_type: String,
+    pub expected_description: String,
+}
+
+impl InterpolationTypeRequirement {
+    #[must_use]
+    pub fn new(
+        interpolation_index: usize,
+        expected_python_type: impl Into<String>,
+        expected_description: impl Into<String>,
+    ) -> Self {
+        Self {
+            interpolation_index,
+            expected_python_type: expected_python_type.into(),
+            expected_description: expected_description.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NormalizedStream {
     pub documents: Vec<NormalizedDocument>,
