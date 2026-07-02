@@ -627,7 +627,7 @@ fn normalized_offset_to_python(py: Python<'_>, offset_minutes: i16) -> PyResult<
 
 #[pymodule]
 fn tstring_bindings(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
-    module.add("__version__", "0.1.0")?;
+    module.add("__version__", "0.2.1")?;
     module.add("__contract_version__", CONTRACT_VERSION)?;
     module.add("__contract_symbols__", PyTuple::new(py, CONTRACT_SYMBOLS)?)?;
     module.add("TemplateError", py.get_type::<TemplateError>())?;

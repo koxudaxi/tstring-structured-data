@@ -1,13 +1,13 @@
 [project]
 name = "tstring-core"
-version = "0.1.0"
+version = "0.2.1"
 description = "Shared runtime primitives for PEP 750 structural template renderers"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 maintainers = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 requires-python = ">=3.14"
-dependencies = ["tstring-bindings>=0.1.0"]
+dependencies = ["tstring-bindings>=0.2.1"]
 keywords = ["pep750", "t-strings", "template-strings", "runtime", "structured-data"]
 classifiers = [
     "Development Status :: 4 - Beta",
