@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 This changelog is automatically generated from GitHub Releases.
 
 ---
+## [0.2.2](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.2) - 2026-07-02
+
+## What's Changed
+* docs: add t-linter integration guide by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/27
+* Add interpolation type requirements by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/45
+
+
+**Full Changelog**: https://github.com/koxudaxi/tstring-structured-data/compare/0.2.1...0.2.2
+
+---
+
 ## [0.2.1](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.1) - 2026-03-19
 
 ## What's Changed
