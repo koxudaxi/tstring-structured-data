@@ -645,7 +645,7 @@ pub fn interpolation_type_requirements_with_profile(
     template: &TemplateInput,
     profile: JsonProfile,
 ) -> BackendResult<Vec<InterpolationTypeRequirement>> {
-    let document = parse_template_with_profile(template, profile)?;
+    let document = parse_validated_template_with_profile(template, profile)?;
     let mut requirements = Vec::new();
     collect_json_value_type_requirements(&document.value, &mut requirements);
     requirements.sort_by_key(|requirement| requirement.interpolation_index);
