@@ -1,4 +1,4 @@
-use crate::{BoundTemplate, exact_integer_string};
+use crate::{BoundTemplate, exact_integer_string, finite_float_string};
 use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime};
 use saphyr::{LoadableYamlNode, MappingOwned, ScalarOwned, YamlOwned};
@@ -472,10 +472,14 @@ fn materialize_scalar(
     style: ScalarStyle,
     tag: Option<&Tag>,
 ) -> BackendResult<YamlOwned> {
+    let has_interpolation = yaml_chunks_have_interpolation(chunks);
     let mut text = assemble_chunks(py, prepared, chunks, false)?;
     match style {
         ScalarStyle::Plain => {
             text = normalize_plain_scalar_text(&text);
+            if has_interpolation && tag.is_none() {
+                return Ok(YamlOwned::Value(ScalarOwned::String(text)));
+            }
         }
         ScalarStyle::SingleQuoted => {
             text = normalize_single_quoted_scalar_text(&text);
@@ -619,7 +623,7 @@ fn materialize_python_value(
             ));
         }
         return Ok(YamlOwned::Value(ScalarOwned::parse_from_cow(Cow::Owned(
-            value.to_string(),
+            finite_float_string(value),
         ))));
     }
     if let Ok(value) = value.extract::<String>() {
@@ -850,6 +854,51 @@ fn normalize_plain_scalar_text(text: &str) -> String {
         .map(str::trim_end)
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn yaml_chunks_have_interpolation(chunks: &[YamlChunk]) -> bool {
+    chunks
+        .iter()
+        .any(|chunk| matches!(chunk, YamlChunk::Interpolation(_)))
+}
+
+fn plain_scalar_fragment_needs_quotes(text: &str) -> bool {
+    if text.is_empty() || text != text.trim() {
+        return true;
+    }
+    if text.contains('\n') || text.contains(": ") || text.ends_with(':') || text.contains(" #") {
+        return true;
+    }
+    let Some(first) = text.bytes().next() else {
+        return true;
+    };
+    if matches!(
+        first,
+        b'-' | b'?'
+            | b':'
+            | b','
+            | b'['
+            | b']'
+            | b'{'
+            | b'}'
+            | b'#'
+            | b'&'
+            | b'*'
+            | b'!'
+            | b'|'
+            | b'>'
+            | b'\''
+            | b'"'
+            | b'%'
+            | b'@'
+            | b'`'
+    ) {
+        return true;
+    }
+    !matches!(
+        ScalarOwned::parse_from_cow_and_metadata(Cow::Borrowed(text), ScalarStyle::Plain, None),
+        Some(ScalarOwned::String(_))
+    )
 }
 
 fn normalize_single_quoted_scalar_text(text: &str) -> String {
@@ -1711,13 +1760,14 @@ fn render_plain_scalar(
     prepared: &mut YamlPreparedDocument<'_>,
     node: &YamlPlainScalarNode,
 ) -> BackendResult<String> {
+    let has_interpolation = yaml_chunks_have_interpolation(&node.chunks);
     let text = assemble_chunks(py, prepared, &node.chunks, false)?
         .trim()
         .to_owned();
     if text.is_empty() {
         return Ok("null".to_owned());
     }
-    if text.contains('\n') {
+    if text.contains('\n') || (has_interpolation && plain_scalar_fragment_needs_quotes(&text)) {
         return Ok(serde_json::to_string(&text).unwrap());
     }
     Ok(text)
@@ -1826,7 +1876,7 @@ fn render_python_value(
                 span,
             ));
         }
-        return Ok(value.to_string());
+        return Ok(finite_float_string(value));
     }
     if let Ok(value) = value.extract::<String>() {
         return Ok(serde_json::to_string(&value).unwrap());
