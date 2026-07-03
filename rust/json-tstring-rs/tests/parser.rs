@@ -89,7 +89,7 @@ fn reports_contextual_interpolation_type_requirements() {
             InterpolationTypeRequirement::new(0, "str", "json object key"),
             InterpolationTypeRequirement::new(
                 1,
-                "str | int | float | bool | None | dict[str, object] | list[object]",
+                "str | int | float | bool | None | dict[str, object] | list[object] | tuple[object, ...]",
                 "json value"
             ),
             InterpolationTypeRequirement::new(2, "str", "json string fragment"),

@@ -13,7 +13,7 @@ This example builds a JSON API payload with dynamic keys, nested structures, and
 ### What to notice
 
 - The dynamic account id is used in a JSON key position: `"account-{account_id}"`
-- Nested `dict`/`list` values are rendered as native JSON objects and arrays
+- Nested `dict`/`list`/`tuple` values are rendered as native JSON objects and arrays
 - String fragments like `"{display_name}-{first_role}"` stay readable
 - Bare scalar assembly like `active-{first_role}` becomes a JSON string
 
@@ -34,6 +34,10 @@ Values passed to JSON interpolation slots must be JSON-serializable:
 - `dict` (rendered as JSON objects)
 
 JSON rejects `float("inf")`, `float("nan")`, and non-string keys.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profile
 

@@ -8,7 +8,7 @@ use tstring_syntax::{
     SourcePosition, SourceSpan, StreamItem, TemplateInput,
 };
 
-const YAML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]";
+const YAML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[object, object]";
 const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

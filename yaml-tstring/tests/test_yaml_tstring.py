@@ -22,7 +22,14 @@ from tstring_core import (
 )
 
 import yaml_tstring
-from yaml_tstring import RenderResult, _slots, render_data, render_result, render_text
+from yaml_tstring import (
+    RenderResult,
+    YamlTemplate,
+    _slots,
+    render_data,
+    render_result,
+    render_text,
+)
 
 type YamlMapping = dict[YamlKey, YamlValue]
 
@@ -251,6 +258,20 @@ def test_yaml_12_scalar_semantics_and_top_level_sequences() -> None:
         {
             "mapping": {"on": "on", "yes": "yes", "truth": True, "empty": None},
             "sequence": ["Alice", True, "on"],
+        }
+    )
+
+
+def test_yaml_accepts_tuple_values_as_sequences() -> None:
+    value = ("alpha", 1, (True, None))
+
+    assert {
+        "data": render_data(t"value: {value}"),
+        "text": render_text(t"value: {value}"),
+    } == snapshot(
+        {
+            "data": {"value": ["alpha", 1, [True, None]]},
+            "text": 'value:\n  - "alpha"\n  - 1\n  -\n    - true\n    - null',
         }
     )
 
@@ -1274,6 +1295,15 @@ def test_yaml_errors_cover_parse_render_and_metadata_paths() -> None:
     with pytest.raises(UnrepresentableValueError, match="non-finite float"):
         render_text(t"value: {float('inf')}")
 
+    bad_bytes = b"ab"
+    nested_template = t"inner: true"
+
+    with pytest.raises(UnrepresentableValueError, match="bytes"):
+        render_text(t"value: {bad_bytes}")
+
+    with pytest.raises(UnrepresentableValueError, match="Template"):
+        render_text(t"value: {nested_template}")
+
 
 def test_yaml_requires_a_template_object() -> None:
     with pytest.raises(
@@ -1353,6 +1383,7 @@ def test_yaml_public_exports_are_standardized() -> None:
         is TemplateSemanticError,
         "unrepr_identity": yaml_tstring.UnrepresentableValueError
         is UnrepresentableValueError,
+        "template_alias_identity": yaml_tstring.YamlTemplate is YamlTemplate,
         "render_result_type_identity": yaml_tstring.RenderResult is CoreRenderResult,
         "imported_render_result_type_identity": RenderResult is CoreRenderResult,
         "template_error_identity": yaml_tstring.TemplateError is TemplateError,
@@ -1368,6 +1399,7 @@ def test_yaml_public_exports_are_standardized() -> None:
                 "TemplateSemanticError",
                 "UnrepresentableValueError",
                 "YamlProfile",
+                "YamlTemplate",
                 "render_data",
                 "render_result",
                 "render_text",
@@ -1375,6 +1407,7 @@ def test_yaml_public_exports_are_standardized() -> None:
             "parse_identity": True,
             "semantic_identity": True,
             "unrepr_identity": True,
+            "template_alias_identity": True,
             "render_result_type_identity": True,
             "imported_render_result_type_identity": True,
             "template_error_identity": True,

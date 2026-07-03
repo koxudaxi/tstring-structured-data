@@ -5,7 +5,7 @@ use tstring_syntax::{
     NormalizedValue, SourcePosition, SourceSpan, StreamItem, TemplateInput,
 };
 
-const TOML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]";
+const TOML_VALUE_PYTHON_TYPE: &str = "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[str, object]";
 const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

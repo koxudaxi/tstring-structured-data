@@ -7,7 +7,7 @@ use tstring_syntax::{
 };
 
 const JSON_VALUE_PYTHON_TYPE: &str =
-    "str | int | float | bool | None | dict[str, object] | list[object]";
+    "str | int | float | bool | None | dict[str, object] | list[object] | tuple[object, ...]";
 const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

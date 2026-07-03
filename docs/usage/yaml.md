@@ -47,11 +47,15 @@ This example demonstrates YAML-specific features: anchors, aliases, tags, and bl
 ## Supported types
 
 - `str`, `int`, `float`, `bool`, `None`
-- `list` (rendered as YAML sequences)
+- `list`, `tuple` (rendered as YAML sequences)
 - `dict` (rendered as YAML mappings)
 
 !!! warning
     Although YAML 1.2.2 Core Schema supports `.inf` and `.nan`, this library rejects `float("inf")` and `float("nan")` to keep output portable across parsers. Anchor/tag fragments must be non-empty and whitespace-free.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profile
 

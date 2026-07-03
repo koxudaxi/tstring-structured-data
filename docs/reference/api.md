@@ -131,13 +131,21 @@ class RenderResult(Generic[TData]):
 | `TomlProfile` | `Literal["1.0", "1.1"]` | `toml_tstring` |
 | `YamlProfile` | `Literal["1.2.2"]` | `yaml_tstring` |
 
+### Template aliases
+
+| Type | Definition | Package |
+|------|------------|---------|
+| `JsonTemplate` | `Annotated[Template, "json"]` | `json_tstring` |
+| `TomlTemplate` | `Annotated[Template, "toml"]` | `toml_tstring` |
+| `YamlTemplate` | `Annotated[Template, "yaml"]` | `yaml_tstring` |
+
 ### Value types
 
 | Type | Definition | Package |
 |------|-----------|---------|
-| `JsonValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
-| `TomlValue` | `dict \| list \| str \| int \| float \| bool \| datetime \| date \| time` | `tstring_core` |
-| `YamlValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
+| `JsonValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| None` | `tstring_core` |
+| `TomlValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| datetime \| date \| time` | `tstring_core` |
+| `YamlValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| None` | `tstring_core` |
 
 ## Exceptions
 

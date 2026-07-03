@@ -142,12 +142,15 @@ def render_yaml_text(
 
 __all__ = [
     "JsonProfile",
+    "JsonTemplate",
     "TomlProfile",
+    "TomlTemplate",
     "TemplateError",
     "TemplateParseError",
     "TemplateSemanticError",
     "UnrepresentableValueError",
     "YamlProfile",
+    "YamlTemplate",
     "render_json",
     "render_json_text",
     "render_toml",

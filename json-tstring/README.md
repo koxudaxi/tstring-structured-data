@@ -17,7 +17,8 @@ render_text(template, profile="rfc8259")  # -> JSON text
 render_result(template, profile="rfc8259")  # -> RenderResult (.text + .data)
 ```
 
-Type alias: `JsonProfile = Literal["rfc8259"]`
+Type aliases: `JsonProfile = Literal["rfc8259"]`,
+`JsonTemplate = Annotated[Template, "json"]`
 
 Parsed template structure is cached per process using `template.strings` +
 profile as the key.

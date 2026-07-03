@@ -1,6 +1,6 @@
 use crate::{BoundTemplate, exact_integer_string};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict, PyList, PyTuple};
 use serde_json::{Number, Value};
 use tstring_json::{
     JsonDocumentNode, JsonInterpolationNode, JsonKeyNode, JsonKeyValue, JsonProfile,
@@ -432,6 +432,13 @@ fn normalize_value(
         }
         return Ok(Value::Object(map));
     }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let mut items = Vec::new();
+        for item in tuple.iter() {
+            items.push(normalize_value(&item, expression, span.clone())?);
+        }
+        return Ok(Value::Array(items));
+    }
 
     Err(BackendError::unrepresentable_at(
         "json.unrepresentable.value",
@@ -531,6 +538,13 @@ fn render_python_value(
             ));
         }
         return Ok(format!("{{{}}}", members.join(", ")));
+    }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let rendered = tuple
+            .iter()
+            .map(|item| render_python_value(&item, expression, span.clone()))
+            .collect::<BackendResult<Vec<_>>>()?;
+        return Ok(format!("[{}]", rendered.join(", ")));
     }
     Err(BackendError::unrepresentable_at(
         "json.unrepresentable.value",

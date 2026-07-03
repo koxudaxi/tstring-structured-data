@@ -23,7 +23,14 @@ from tstring_core import (
 )
 
 import toml_tstring
-from toml_tstring import RenderResult, _slots, render_data, render_result, render_text
+from toml_tstring import (
+    RenderResult,
+    TomlTemplate,
+    _slots,
+    render_data,
+    render_result,
+    render_text,
+)
 
 type TomlTable = dict[str, TomlValue]
 type TomlArray = list[TomlValue]
@@ -154,6 +161,20 @@ def test_toml_array_of_tables_and_comments_round_trip() -> None:
 
     assert render_data(template) == snapshot(
         {"services": [{"name": "api"}, {"name": "worker"}]}
+    )
+
+
+def test_toml_accepts_tuple_values_as_arrays() -> None:
+    value = ("alpha", 1, (True, "omega"))
+
+    assert {
+        "data": render_data(t"items = {value}"),
+        "text": render_text(t"items = {value}"),
+    } == snapshot(
+        {
+            "data": {"items": ["alpha", 1, [True, "omega"]]},
+            "text": 'items = ["alpha", 1, [true, "omega"]]',
+        }
     )
 
 
@@ -909,6 +930,8 @@ def test_toml_parse_and_value_errors_are_meaningful() -> None:
     bad_key = 3
     bad_time = time(1, 2, 3, tzinfo=UTC)
     bad_fragment = BadStringValue()
+    bad_bytes = b"ab"
+    nested_template = t"inner = true"
 
     with pytest.raises(TemplateParseError, match="Expected a TOML value"):
         render_text(t"name = ")
@@ -929,6 +952,12 @@ def test_toml_parse_and_value_errors_are_meaningful() -> None:
 
     with pytest.raises(UnrepresentableValueError, match="string fragment"):
         render_text(t'title = "hi-{bad_fragment}"')
+
+    with pytest.raises(UnrepresentableValueError, match="bytes"):
+        render_text(t"value = {bad_bytes}")
+
+    with pytest.raises(UnrepresentableValueError, match="Template"):
+        render_text(t"value = {nested_template}")
 
     with pytest.raises(TemplateSemanticError, match="Duplicate TOML"):
         render_data(Template('[a]\nvalue = 1\n[a]\nname = "x"\n'))
@@ -1127,6 +1156,7 @@ def test_toml_public_exports_are_standardized() -> None:
         is TemplateSemanticError,
         "unrepr_identity": toml_tstring.UnrepresentableValueError
         is UnrepresentableValueError,
+        "template_alias_identity": toml_tstring.TomlTemplate is TomlTemplate,
         "render_result_type_identity": toml_tstring.RenderResult is CoreRenderResult,
         "imported_render_result_type_identity": RenderResult is CoreRenderResult,
         "template_error_identity": toml_tstring.TemplateError is TemplateError,
@@ -1141,6 +1171,7 @@ def test_toml_public_exports_are_standardized() -> None:
                 "TemplateParseError",
                 "TemplateSemanticError",
                 "TomlProfile",
+                "TomlTemplate",
                 "UnrepresentableValueError",
                 "render_data",
                 "render_result",
@@ -1149,6 +1180,7 @@ def test_toml_public_exports_are_standardized() -> None:
             "parse_identity": True,
             "semantic_identity": True,
             "unrepr_identity": True,
+            "template_alias_identity": True,
             "render_result_type_identity": True,
             "imported_render_result_type_identity": True,
             "template_error_identity": True,

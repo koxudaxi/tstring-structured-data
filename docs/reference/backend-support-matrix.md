@@ -36,6 +36,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - top-level scalar, object, and array values
+- Python `list` and `tuple` values as JSON arrays
 - whole-value, object-key, quoted-key-fragment, and string-fragment interpolation
 - RFC 8259 number forms, escape sequences, surrogate pairs, and representative examples
 - JSON data normalization through `serde_json`
@@ -55,6 +56,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - assignments, dotted keys, table headers, array-of-table headers, arrays, and inline tables
+- Python `list` and `tuple` values as TOML arrays
 - basic, literal, multiline basic, and multiline literal strings
 - TOML 1.0 numeric, string, date, time, and datetime forms exercised in tests
 - interpolation in keys, headers, values, and string fragments
@@ -86,6 +88,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - block and flow mappings/sequences
+- Python `list` and `tuple` values as YAML sequences
 - plain, single-quoted, double-quoted, and block scalars
 - anchors, aliases, tags, directives, and explicit document markers
 - multi-document streams

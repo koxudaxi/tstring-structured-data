@@ -101,9 +101,46 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Sync lockstep versions to release version
-        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
+      - name: Validate release ref
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          ref_version="${REF_NAME#v}"
+          if [ "$REF_TYPE" = "tag" ]; then
+            if [ "$ref_version" != "$VERSION" ]; then
+              echo "::error::Tag ref $REF_NAME does not match release version $VERSION."
+              exit 1
+            fi
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$REF_TYPE" != "branch" ] || [ "$REF_NAME" != "main" ]; then
+            echo "::error::Python packages may only be published from a version tag or tagged main commit."
+            exit 1
+          fi
+
+          tag_commit=""
+          for candidate in "$VERSION" "v$VERSION"; do
+            if tag_commit="$(git rev-list -n 1 "refs/tags/$candidate" 2>/dev/null)"; then
+              break
+            fi
+            tag_commit=""
+          done
+          if [ -z "$tag_commit" ]; then
+            echo "::error::Create and push a $VERSION tag before publishing from main."
+            exit 1
+          fi
+          if [ "$tag_commit" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::Release tag $VERSION must point at the checked-out main commit."
+            exit 1
+          fi
 
       - name: Validate lockstep package versions
         run: python3 scripts/manage_versions.py check --tag "${{ needs.resolve-version.outputs.version }}"
@@ -134,9 +171,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
-      - name: Sync lockstep versions to release version
-        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -190,9 +224,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release version
-        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -245,9 +276,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
-      - name: Sync lockstep versions to release version
-        run: python3 scripts/manage_versions.py set "${{ needs.resolve-version.outputs.version }}"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7

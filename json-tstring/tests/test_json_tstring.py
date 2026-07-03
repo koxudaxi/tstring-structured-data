@@ -26,7 +26,14 @@ from tstring_core import (
 )
 
 import json_tstring
-from json_tstring import RenderResult, _slots, render_data, render_result, render_text
+from json_tstring import (
+    JsonTemplate,
+    RenderResult,
+    _slots,
+    render_data,
+    render_result,
+    render_text,
+)
 
 type JsonObject = dict[str, JsonValue]
 
@@ -458,6 +465,22 @@ def test_json_preserves_exact_large_python_integers() -> None:
     assert render_data(Template(str(value))) == value
 
 
+def test_json_accepts_tuple_values_as_arrays() -> None:
+    value = ("alpha", 1, (True, None))
+
+    assert {
+        "data": render_data(t"{value}"),
+        "text": render_text(t"{value}"),
+        "nested": render_data(t'{{"value": {value}}}'),
+    } == snapshot(
+        {
+            "data": ["alpha", 1, [True, None]],
+            "text": '["alpha", 1, [true, null]]',
+            "nested": {"value": ["alpha", 1, [True, None]]},
+        }
+    )
+
+
 def test_json_negative_zero_matches_python_json_semantics() -> None:
     top = render_data(t"-0")
     nested = _expect_json_object(render_data(Template('{"value": -0}')))
@@ -801,6 +824,8 @@ def test_json_unrepresentable_values_fail() -> None:
     bad_key = 3
     bad_mapping = {1: "x"}
     bad_value = {1, 2}
+    bad_bytes = b"ab"
+    nested_template = t'{{"inner": true}}'
 
     with pytest.raises(UnrepresentableValueError, match="object key"):
         render_text(t"{{{bad_key}: 1}}")
@@ -813,6 +838,12 @@ def test_json_unrepresentable_values_fail() -> None:
 
     with pytest.raises(UnrepresentableValueError, match="set"):
         render_text(t'{{"items": {bad_value}}}')
+
+    with pytest.raises(UnrepresentableValueError, match="bytes"):
+        render_text(t"{bad_bytes}")
+
+    with pytest.raises(UnrepresentableValueError, match="Template"):
+        render_text(t"{nested_template}")
 
 
 def test_json_fragment_stringification_errors_surface_cleanly() -> None:
@@ -870,6 +901,7 @@ def test_json_public_exports_are_standardized() -> None:
         is TemplateSemanticError,
         "unrepr_identity": json_tstring.UnrepresentableValueError
         is UnrepresentableValueError,
+        "template_alias_identity": json_tstring.JsonTemplate is JsonTemplate,
         "render_result_type_identity": json_tstring.RenderResult is CoreRenderResult,
         "imported_render_result_type_identity": RenderResult is CoreRenderResult,
         "template_error_identity": json_tstring.TemplateError is TemplateError,
@@ -880,6 +912,7 @@ def test_json_public_exports_are_standardized() -> None:
         {
             "all": [
                 "JsonProfile",
+                "JsonTemplate",
                 "RenderResult",
                 "TemplateError",
                 "TemplateParseError",
@@ -892,6 +925,7 @@ def test_json_public_exports_are_standardized() -> None:
             "parse_identity": True,
             "semantic_identity": True,
             "unrepr_identity": True,
+            "template_alias_identity": True,
             "render_result_type_identity": True,
             "imported_render_result_type_identity": True,
             "template_error_identity": True,

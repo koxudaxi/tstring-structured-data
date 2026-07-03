@@ -51,8 +51,11 @@ def test_exported_profile_aliases_exist() -> None:
 def test_top_level_public_exports_hide_extension_helpers() -> None:
     assert {
         "JsonProfile",
+        "JsonTemplate",
         "TomlProfile",
+        "TomlTemplate",
         "YamlProfile",
+        "YamlTemplate",
         "TemplateError",
         "TemplateParseError",
         "TemplateSemanticError",

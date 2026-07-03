@@ -17,7 +17,8 @@ render_text(template, profile="1.1")  # -> TOML text
 render_result(template, profile="1.1")  # -> RenderResult (.text + .data)
 ```
 
-Type alias: `TomlProfile = Literal["1.0", "1.1"]`
+Type aliases: `TomlProfile = Literal["1.0", "1.1"]`,
+`TomlTemplate = Annotated[Template, "toml"]`
 
 Parsed template structure is cached per process using `template.strings` +
 profile as the key. Use `profile="1.0"` when you need the stricter TOML 1.0
