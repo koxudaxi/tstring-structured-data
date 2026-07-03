@@ -5,12 +5,15 @@ use num_bigint::BigInt;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourcePosition {
     pub token_index: usize,
+    /// Offset within the token, counted in Rust `char` values rather than UTF-8 bytes.
     pub offset: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceSpan {
+    /// Inclusive start position in token and character-offset units.
     pub start: SourcePosition,
+    /// Exclusive end position in token and character-offset units.
     pub end: SourcePosition,
 }
 

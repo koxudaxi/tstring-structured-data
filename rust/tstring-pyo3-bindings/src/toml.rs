@@ -1,4 +1,4 @@
-use crate::{BoundTemplate, exact_integer_string};
+use crate::{BoundTemplate, exact_integer_string, finite_float_string};
 use pyo3::prelude::*;
 use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime};
 use std::collections::BTreeMap;
@@ -469,7 +469,7 @@ fn render_python_value(
             }
             .to_owned());
         }
-        return Ok(value.to_string());
+        return Ok(finite_float_string(value));
     }
     if let Ok(value) = value.downcast::<PyDateTime>() {
         return value

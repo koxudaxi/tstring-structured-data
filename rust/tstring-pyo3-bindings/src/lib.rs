@@ -224,6 +224,19 @@ pub fn exact_integer_string(value: &Bound<'_, PyAny>) -> PyResult<Option<String>
     Ok(None)
 }
 
+#[must_use]
+pub fn finite_float_string(value: f64) -> String {
+    debug_assert!(value.is_finite());
+    if value == 0.0 && value.is_sign_negative() {
+        return "-0.0".to_owned();
+    }
+    let mut rendered = value.to_string();
+    if !rendered.contains(['.', 'e', 'E']) {
+        rendered.push_str(".0");
+    }
+    rendered
+}
+
 fn format_interpolation_text(
     py: Python<'_>,
     value: &Bound<'_, PyAny>,

@@ -443,6 +443,26 @@ def test_toml_numeric_and_local_datetime_forms_follow_toml_1_0() -> None:
     )
 
 
+def test_toml_python_float_interpolations_preserve_float_text() -> None:
+    value = 1.0
+    large = 1e20
+    negative_zero = -0.0
+
+    result = render_result(
+        t"value = {value}\nlarge = {large}\nnegative_zero = {negative_zero}\n"
+    )
+
+    assert result.text == (
+        "value = 1.0\nlarge = 100000000000000000000.0\nnegative_zero = -0.0"
+    )
+    data = _expect_toml_table(result.data)
+    assert _expect_toml_float(data["value"]) == 1.0
+    assert _expect_toml_float(data["large"]) == 1e20
+    negative_zero = _expect_toml_float(data["negative_zero"])
+    assert negative_zero == -0.0
+    assert math.copysign(1.0, negative_zero) == -1.0
+
+
 def test_toml_nested_render_in_string_fragment_is_safe() -> None:
     value = NestedTomlFragment()
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 # ruff: noqa: E501
+import math
 from string.templatelib import Template
 from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
@@ -100,6 +101,52 @@ def test_yaml_plain_interpolations_keep_structured_insertion_behavior() -> None:
         "count": 7,
         "ratio": 2.5,
     }
+
+
+def test_yaml_plain_scalar_fragments_quote_structural_runtime_text() -> None:
+    colon = "foo: bar"
+    comment = "x #comment"
+    number = 1
+    key = "a: b"
+
+    result = render_result(
+        t"colon: pre{colon}\ncomment: pre{comment}\nnumber: {number}0\npre{key}: value\n"
+    )
+
+    assert result.text == (
+        'colon: "prefoo: bar"\ncomment: "prex #comment"\nnumber: "10"\n"prea: b": value'
+    )
+    assert result.data == {
+        "colon": "prefoo: bar",
+        "comment": "prex #comment",
+        "number": "10",
+        "prea: b": "value",
+    }
+
+
+def test_yaml_python_float_interpolations_preserve_float_shape() -> None:
+    value = 1.0
+    large = 1e20
+    negative_zero = -0.0
+
+    result = render_result(
+        t"value: {value}\nlarge: {large}\nnegative_zero: {negative_zero}\n"
+    )
+
+    assert result.text == (
+        "value: 1.0\nlarge: 100000000000000000000.0\nnegative_zero: -0.0"
+    )
+    assert result.data == {
+        "value": 1.0,
+        "large": 1e20,
+        "negative_zero": -0.0,
+    }
+    data = result.data
+    assert isinstance(data, dict)
+    assert all(isinstance(value, float) for value in data.values())
+    negative_zero_value = data["negative_zero"]
+    assert isinstance(negative_zero_value, float)
+    assert math.copysign(1.0, negative_zero_value) == -1.0
 
 
 def test_yaml_plain_collection_interpolations_render_block_first_text() -> None:
