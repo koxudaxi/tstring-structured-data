@@ -279,7 +279,7 @@ This example builds a JSON API payload with dynamic keys, nested structures, and
 ### What to notice
 
 - The dynamic account id is used in a JSON key position: `"account-{account_id}"`
-- Nested `dict`/`list` values are rendered as native JSON objects and arrays
+- Nested `dict`/`list`/`tuple` values are rendered as native JSON objects and arrays
 - String fragments like `"{display_name}-{first_role}"` stay readable
 - Bare scalar assembly like `active-{first_role}` becomes a JSON string
 
@@ -300,6 +300,10 @@ Values passed to JSON interpolation slots must be JSON-serializable:
 - `dict` (rendered as JSON objects)
 
 JSON rejects `float("inf")`, `float("nan")`, and non-string keys.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profile
 
@@ -351,12 +355,16 @@ This example builds a TOML configuration with interpolated table headers, keys, 
 ## Supported types
 
 - `str`, `int`, `float`, `bool`
-- `list` (rendered as TOML arrays)
+- `list`, `tuple` (rendered as TOML arrays)
 - `dict` (rendered as inline tables or nested tables)
 - `datetime`, `date`, `time` (rendered as TOML-native datetime literals)
 
 !!! warning
     TOML has no null value — `None` is rejected. Offset-aware `time` values are also rejected.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profiles
 
@@ -428,11 +436,15 @@ This example demonstrates YAML-specific features: anchors, aliases, tags, and bl
 ## Supported types
 
 - `str`, `int`, `float`, `bool`, `None`
-- `list` (rendered as YAML sequences)
+- `list`, `tuple` (rendered as YAML sequences)
 - `dict` (rendered as YAML mappings)
 
 !!! warning
     Although YAML 1.2.2 Core Schema supports `.inf` and `.nan`, this library rejects `float("inf")` and `float("nan")` to keep output portable across parsers. Anchor/tag fragments must be non-empty and whitespace-free.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profile
 
@@ -709,6 +721,40 @@ Configure t-linter via `pyproject.toml`:
 extend-exclude = ["generated", "vendor"]
 ignore-file = ".t-linterignore"
 ```
+
+## Language detection
+
+t-linter identifies structured-data templates from PEP 593 `Annotated`
+metadata on `string.templatelib.Template`:
+
+```python
+from string.templatelib import Template
+from typing import Annotated
+
+payload: Annotated[Template, "json"] = t'{"name": {name}}'
+config: Annotated[Template, "toml"] = t"name = {name}"
+manifest: Annotated[Template, "yaml"] = t"name: {name}"
+```
+
+The wrapper packages export aliases for the same convention:
+
+```python
+from json_tstring import JsonTemplate, render_data as render_json
+from toml_tstring import TomlTemplate, render_data as render_toml
+from yaml_tstring import YamlTemplate, render_data as render_yaml
+
+payload: JsonTemplate = t'{"name": {name}}'
+config: TomlTemplate = t"name = {name}"
+manifest: YamlTemplate = t"name: {name}"
+
+json_data = render_json(payload)
+toml_data = render_toml(config)
+yaml_data = render_yaml(manifest)
+```
+
+For this project, t-linter recognizes the metadata tags `json`, `toml`,
+`yaml`, and `yml`. The aliases above use the canonical `json`, `toml`, and
+`yaml` tags.
 
 ## How it works with tstring-structured-data
 
@@ -1140,13 +1186,21 @@ class RenderResult(Generic[TData]):
 | `TomlProfile` | `Literal["1.0", "1.1"]` | `toml_tstring` |
 | `YamlProfile` | `Literal["1.2.2"]` | `yaml_tstring` |
 
+### Template aliases
+
+| Type | Definition | Package |
+|------|------------|---------|
+| `JsonTemplate` | `Annotated[Template, "json"]` | `json_tstring` |
+| `TomlTemplate` | `Annotated[Template, "toml"]` | `toml_tstring` |
+| `YamlTemplate` | `Annotated[Template, "yaml"]` | `yaml_tstring` |
+
 ### Value types
 
 | Type | Definition | Package |
 |------|-----------|---------|
-| `JsonValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
-| `TomlValue` | `dict \| list \| str \| int \| float \| bool \| datetime \| date \| time` | `tstring_core` |
-| `YamlValue` | `dict \| list \| str \| int \| float \| bool \| None` | `tstring_core` |
+| `JsonValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| None` | `tstring_core` |
+| `TomlValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| datetime \| date \| time` | `tstring_core` |
+| `YamlValue` | `dict \| list \| tuple \| str \| int \| float \| bool \| None` | `tstring_core` |
 
 ## Exceptions
 
@@ -1211,6 +1265,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - top-level scalar, object, and array values
+- Python `list` and `tuple` values as JSON arrays
 - whole-value, object-key, quoted-key-fragment, and string-fragment interpolation
 - RFC 8259 number forms, escape sequences, surrogate pairs, and representative examples
 - JSON data normalization through `serde_json`
@@ -1230,6 +1285,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - assignments, dotted keys, table headers, array-of-table headers, arrays, and inline tables
+- Python `list` and `tuple` values as TOML arrays
 - basic, literal, multiline basic, and multiline literal strings
 - TOML 1.0 numeric, string, date, time, and datetime forms exercised in tests
 - interpolation in keys, headers, values, and string fragments
@@ -1261,6 +1317,7 @@ internal wrapper-package imports, but it is not part of the public contract.
 ### Supported and tested
 
 - block and flow mappings/sequences
+- Python `list` and `tuple` values as YAML sequences
 - plain, single-quoted, double-quoted, and block scalars
 - anchors, aliases, tags, directives, and explicit document markers
 - multi-document streams
