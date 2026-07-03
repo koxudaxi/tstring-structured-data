@@ -23,12 +23,12 @@ pyo3 = { workspace = true, features = ["abi3-py314"] }
 pythonize = { workspace = true }
 saphyr = { workspace = true }
 serde_json = { workspace = true }
-tstring-json = { version = "0.2.1", path = "../json-tstring-rs" }
-tstring-pyo3-bindings = { version = "0.2.1", path = "../tstring-pyo3-bindings" }
-tstring-syntax = { version = "0.2.1", path = "../tstring-core-rs" }
+tstring-json = { version = "0.2.2", path = "../json-tstring-rs" }
+tstring-pyo3-bindings = { version = "0.2.2", path = "../tstring-pyo3-bindings" }
+tstring-syntax = { version = "0.2.2", path = "../tstring-core-rs" }
 toml = { workspace = true }
-tstring-toml = { version = "0.2.1", path = "../toml-tstring-rs" }
-tstring-yaml = { version = "0.2.1", path = "../yaml-tstring-rs" }
+tstring-toml = { version = "0.2.2", path = "../toml-tstring-rs" }
+tstring-yaml = { version = "0.2.2", path = "../yaml-tstring-rs" }
 
 [dev-dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize"] }

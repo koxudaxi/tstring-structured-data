@@ -1,6 +1,6 @@
 [project]
 name = "toml-tstring"
-version = "0.2.1"
+version = "0.2.2"
 description = "TOML renderer for t-string structured data templates"
 readme = "README.md"
 license = { text = "MIT" }
@@ -8,8 +8,8 @@ authors = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 maintainers = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 requires-python = ">=3.14"
 dependencies = [
-    "tstring-bindings>=0.2.1",
-    "tstring-core>=0.2.1",
+    "tstring-bindings>=0.2.2",
+    "tstring-core>=0.2.2",
 ]
 keywords = ["pep750", "t-strings", "toml", "template-strings", "structured-data"]
 classifiers = [
