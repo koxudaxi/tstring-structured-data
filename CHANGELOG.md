@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file.
 This changelog is automatically generated from GitHub Releases.
 
 ---
+## [0.3.0](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.3.0) - 2026-07-04
+
+## Breaking Changes
+
+
+
+### Generated Output Changes
+* Float interpolations now render with explicit decimal notation - Floats like `1.0` are now rendered as `1.0` instead of `1`, and `-0.0` is now preserved as `-0.0`. This affects both YAML and TOML output when interpolating Python float values. (#46)
+  ```python
+  value = 1.0
+  # Before: value: 1
+  # After:  value: 1.0
+  ```
+* YAML plain scalar interpolations with structural characters are now quoted - When interpolated values concatenated with literal text produce content containing YAML structural characters (`: `, ` #`, newlines, or leading indicators like `-`, `?`, `:`, `[`, `{`, etc.), the result is now JSON-quoted to prevent parsing ambiguity. (#46)
+  ```python
+  colon = "foo: bar"
+  t"key: pre{colon}"
+  # Before: key: prefoo: bar  (ambiguous YAML)
+  # After:  key: "prefoo: bar"
+  ```
+
+## What's Changed
+* Harden YAML scalar rendering by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/46
+* Improve runtime compatibility by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/47
+* Publish packages from releases by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/48
+
+
+**Full Changelog**: https://github.com/koxudaxi/tstring-structured-data/compare/0.2.2...0.3.0
+
+---
+
 ## [0.2.2](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.2.2) - 2026-07-02
 
 ## What's Changed
