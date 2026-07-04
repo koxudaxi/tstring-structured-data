@@ -14,42 +14,12 @@ concurrency:
 
 jobs:
   resolve-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.resolve.outputs.version }}
-      tag_name: ${{ steps.resolve.outputs.tag_name }}
-    steps:
-      - name: Resolve release version
-        id: resolve
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          REF_NAME: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
-        run: |
-          version=""
-          tag_name=""
-          if [ -n "$RELEASE_TAG" ]; then
-            version="$RELEASE_TAG"
-            tag_name="$RELEASE_TAG"
-          elif [ "$REF_TYPE" = "tag" ]; then
-            version="$REF_NAME"
-            tag_name="$REF_NAME"
-          else
-            printf '%s\n' "Publish a GitHub Release or run this workflow on a tag ref." >&2
-            exit 1
-          fi
-
-          version="${version#refs/tags/}"
-          version="${version#v}"
-          version="${version#V}"
-          if [[ "$version" == *$'\n'* || "$version" == *$'\r'* || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            printf '%s\n' "Expected semantic version like 0.1.1." >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          tag_name="${tag_name#refs/tags/}"
-          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/resolve-release-version.yml
+    with:
+      release_tag: ${{ github.event.release.tag_name || '' }}
+      ref_name: ${{ github.ref_name }}
+      ref_type: ${{ github.ref_type }}
+      missing_message: "Publish a GitHub Release or run this workflow on a tag ref."
 
   version-check:
     needs: resolve-version
@@ -62,6 +32,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Validate release ref
         shell: bash
@@ -87,6 +58,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -106,6 +78,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -127,6 +100,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -151,6 +125,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -172,6 +147,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
