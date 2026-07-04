@@ -262,8 +262,8 @@ PYO3_PYTHON="$PWD/.venv/bin/python3" cargo test --manifest-path rust/Cargo.toml 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
 | `ci.yml` | push, PR | test, lint, type check, build, twine check |
-| `publish-python.yml` | tag push | wheel builds (Linux/macOS/Windows) → PyPI |
-| `publish-rust.yml` | tag push | crates.io |
+| `publish-python.yml` | GitHub Release published | wheel builds (Linux/macOS/Windows) → PyPI |
+| `publish-rust.yml` | GitHub Release published | crates.io |
 
 Distributed as five packages: `tstring-core` (pure Python), `json-tstring`, `toml-tstring`, `yaml-tstring`, and `tstring_bindings` (platform-specific wheel).
 

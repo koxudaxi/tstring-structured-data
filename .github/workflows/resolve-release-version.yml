@@ -1,0 +1,76 @@
+name: Resolve Release Version
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+        default: ""
+      release_tag:
+        required: false
+        type: string
+        default: ""
+      ref_name:
+        required: true
+        type: string
+      ref_type:
+        required: true
+        type: string
+      missing_message:
+        required: false
+        type: string
+        default: "Set the version input, publish a GitHub Release, or run this workflow on a tag ref."
+    outputs:
+      version:
+        value: ${{ jobs.resolve.outputs.version }}
+      tag_name:
+        value: ${{ jobs.resolve.outputs.tag_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+    steps:
+      - name: Resolve release version
+        id: resolve
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          REF_NAME: ${{ inputs.ref_name }}
+          REF_TYPE: ${{ inputs.ref_type }}
+          MISSING_MESSAGE: ${{ inputs.missing_message }}
+        run: |
+          version="${INPUT_VERSION}"
+          tag_name=""
+          if [ -z "$version" ]; then
+            if [ -n "$RELEASE_TAG" ]; then
+              version="$RELEASE_TAG"
+              tag_name="$RELEASE_TAG"
+            elif [ "$REF_TYPE" = "tag" ]; then
+              version="$REF_NAME"
+              tag_name="$REF_NAME"
+            else
+              printf '%s\n' "$MISSING_MESSAGE" >&2
+              exit 1
+            fi
+          fi
+
+          version="${version#refs/tags/}"
+          version="${version#v}"
+          version="${version#V}"
+          if [[ "$version" == *$'\n'* || "$version" == *$'\r'* || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf '%s\n' "Expected semantic version like 0.1.0." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -n "$tag_name" ]; then
+            tag_name="${tag_name#refs/tags/}"
+            echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          fi

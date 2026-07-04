@@ -1,22 +1,28 @@
 name: Publish Rust Crates
 
 on:
-  push:
-    tags:
-      - "**"
+  release:
+    types:
+      - published
 
 permissions:
   contents: read
 
-env:
-  RELEASE_VERSION: ${{ github.ref_name }}
-
 concurrency:
-  group: publish-rust-${{ github.ref_name }}
+  group: publish-rust-${{ github.event.release.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  resolve-version:
+    uses: ./.github/workflows/resolve-release-version.yml
+    with:
+      release_tag: ${{ github.event.release.tag_name || '' }}
+      ref_name: ${{ github.ref_name }}
+      ref_type: ${{ github.ref_type }}
+      missing_message: "Publish a GitHub Release or run this workflow on a tag ref."
+
   version-check:
+    needs: resolve-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,26 +31,34 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Validate release ref
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          if [ "${{ github.ref_type }}" != "tag" ]; then
+          if [ -z "$RELEASE_TAG" ] && [ "$REF_TYPE" != "tag" ]; then
             echo "::error::Rust crates may only be published from a version tag."
             exit 1
           fi
 
       - name: Validate lockstep versions against tag
-        run: python3 scripts/manage_versions.py check --tag "${{ env.RELEASE_VERSION }}"
+        run: python3 scripts/manage_versions.py check --tag "${{ needs.resolve-version.outputs.version }}"
 
   package-check:
-    needs: version-check
+    needs: [resolve-version, version-check]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -53,7 +67,7 @@ jobs:
         run: cargo package --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
 
   publish-syntax:
-    needs: package-check
+    needs: [resolve-version, package-check]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -62,6 +76,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -72,7 +89,7 @@ jobs:
         run: cargo publish --manifest-path rust/Cargo.toml -p tstring-syntax
 
   publish-json:
-    needs: publish-syntax
+    needs: [resolve-version, publish-syntax]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,6 +98,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -94,7 +114,7 @@ jobs:
         run: cargo publish --manifest-path rust/Cargo.toml -p tstring-json
 
   publish-toml:
-    needs: publish-json
+    needs: [resolve-version, publish-json]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -103,6 +123,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -113,7 +136,7 @@ jobs:
         run: cargo publish --manifest-path rust/Cargo.toml -p tstring-toml
 
   publish-yaml:
-    needs: publish-toml
+    needs: [resolve-version, publish-toml]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -122,6 +145,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve-version.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
