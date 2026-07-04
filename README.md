@@ -218,18 +218,16 @@ See [Backend Support Matrix](https://tstring-structured-data.koxudaxi.dev/refere
 ## Publishing
 
 Python and Rust packages are published automatically via GitHub Actions
-when a version tag is pushed. Before tagging, update the lockstep versions and
-commit the manifest changes:
+when a GitHub Release draft is published. Before publishing the draft, update
+the lockstep versions and commit the manifest changes:
 
 ```bash
 python3 scripts/manage_versions.py set 0.2.3
 python3 scripts/manage_versions.py check --tag 0.2.3
-git tag 0.2.3
 ```
 
-Publish workflows validate that the checked-out ref is the release tag and that
-the committed manifests already match that tag. They do not rewrite versions
-during publish.
+Publish workflows validate that the release tag matches the committed manifests.
+They do not rewrite versions during publish.
 
 ## See also
 
