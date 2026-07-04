@@ -101,6 +101,40 @@ extend-exclude = ["generated", "vendor"]
 ignore-file = ".t-linterignore"
 ```
 
+## Language detection
+
+t-linter identifies structured-data templates from PEP 593 `Annotated`
+metadata on `string.templatelib.Template`:
+
+```python
+from string.templatelib import Template
+from typing import Annotated
+
+payload: Annotated[Template, "json"] = t'{"name": {name}}'
+config: Annotated[Template, "toml"] = t"name = {name}"
+manifest: Annotated[Template, "yaml"] = t"name: {name}"
+```
+
+The wrapper packages export aliases for the same convention:
+
+```python
+from json_tstring import JsonTemplate, render_data as render_json
+from toml_tstring import TomlTemplate, render_data as render_toml
+from yaml_tstring import YamlTemplate, render_data as render_yaml
+
+payload: JsonTemplate = t'{"name": {name}}'
+config: TomlTemplate = t"name = {name}"
+manifest: YamlTemplate = t"name: {name}"
+
+json_data = render_json(payload)
+toml_data = render_toml(config)
+yaml_data = render_yaml(manifest)
+```
+
+For this project, t-linter recognizes the metadata tags `json`, `toml`,
+`yaml`, and `yml`. The aliases above use the canonical `json`, `toml`, and
+`yaml` tags.
+
 ## How it works with tstring-structured-data
 
 t-linter and tstring-structured-data share the same Rust parsing and formatting backends:

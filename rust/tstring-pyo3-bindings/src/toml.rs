@@ -1,6 +1,6 @@
 use crate::{BoundTemplate, exact_integer_string, finite_float_string};
 use pyo3::prelude::*;
-use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime};
+use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime, PyTuple};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use tstring_syntax::{BackendError, BackendResult};
@@ -552,6 +552,13 @@ fn render_python_value(
             format!("{{ {} }}", entries.join(", "))
         });
     }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let mut items = Vec::new();
+        for item in tuple.iter() {
+            items.push(render_python_value(&item, expression, span.clone())?);
+        }
+        return Ok(format!("[{}]", items.join(", ")));
+    }
 
     Err(BackendError::unrepresentable_at(
         "toml.unrepresentable.value",
@@ -1061,6 +1068,13 @@ fn materialize_python_value(
             )?;
         }
         return Ok(toml::Value::Table(table));
+    }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let mut items = Vec::new();
+        for item in tuple.iter() {
+            items.push(materialize_python_value(&item, expression, span.clone())?);
+        }
+        return Ok(toml::Value::Array(items));
     }
 
     Err(BackendError::unrepresentable_at(

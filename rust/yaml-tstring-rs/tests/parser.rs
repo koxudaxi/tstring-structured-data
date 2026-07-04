@@ -152,19 +152,19 @@ fn reports_contextual_interpolation_type_requirements() {
         vec![
             InterpolationTypeRequirement::new(
                 0,
-                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[object, object]",
                 "yaml mapping key"
             ),
             InterpolationTypeRequirement::new(
                 1,
-                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[object, object]",
                 "yaml value"
             ),
             InterpolationTypeRequirement::new(2, "str", "yaml scalar fragment"),
             InterpolationTypeRequirement::new(3, "str", "yaml metadata fragment"),
             InterpolationTypeRequirement::new(
                 4,
-                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+                "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[object, object]",
                 "yaml value"
             ),
         ]
@@ -183,7 +183,7 @@ fn reports_complex_key_interpolation_requirements_in_key_context() {
         interpolation_type_requirements(&template).expect("expected type requirements"),
         vec![InterpolationTypeRequirement::new(
             0,
-            "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | dict[object, object]",
+            "str | int | float | bool | None | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[object, object]",
             "yaml mapping key"
         )]
     );

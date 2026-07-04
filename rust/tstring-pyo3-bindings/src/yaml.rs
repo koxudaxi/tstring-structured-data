@@ -1,6 +1,6 @@
 use crate::{BoundTemplate, exact_integer_string, finite_float_string};
 use pyo3::prelude::*;
-use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime};
+use pyo3::types::{PyDate, PyDateTime, PyDict, PyList, PyTime, PyTuple};
 use saphyr::{LoadableYamlNode, MappingOwned, ScalarOwned, YamlOwned};
 use saphyr_parser::{ScalarStyle, Tag};
 use std::borrow::Cow;
@@ -714,6 +714,13 @@ fn materialize_python_value(
         }
         return Ok(YamlOwned::Mapping(mapping));
     }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let items = tuple
+            .iter()
+            .map(|item| materialize_python_value(&item, false, span.clone()))
+            .collect::<BackendResult<Vec<_>>>()?;
+        return Ok(YamlOwned::Sequence(items));
+    }
     if key_mode {
         let text = value
             .str()
@@ -1050,7 +1057,10 @@ fn validate_value_interpolation(
     }
 
     let value = prepared.template.bind_value(py, node.interpolation_index)?;
-    if value.downcast::<PyList>().is_ok() || value.downcast::<PyDict>().is_ok() {
+    if value.downcast::<PyList>().is_ok()
+        || value.downcast::<PyDict>().is_ok()
+        || value.downcast::<PyTuple>().is_ok()
+    {
         let owned = materialize_python_value(&value, false, Some(node.span.clone()))?;
         return render_owned_value(&owned, indent, context);
     }
@@ -1944,6 +1954,13 @@ fn render_python_value(
             ));
         }
         return Ok(format!("{{ {} }}", entries.join(", ")));
+    }
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        let items = tuple
+            .iter()
+            .map(|item| render_python_value(&item, false, span.clone()))
+            .collect::<BackendResult<Vec<_>>>()?;
+        return Ok(format!("[ {} ]", items.join(", ")));
     }
     if key_mode {
         let text = value

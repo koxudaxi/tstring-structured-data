@@ -23,9 +23,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
+      - name: Validate release ref
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "::error::Rust crates may only be published from a version tag."
+            exit 1
+          fi
 
       - name: Validate lockstep versions against tag
         run: python3 scripts/manage_versions.py check --tag "${{ env.RELEASE_VERSION }}"
@@ -39,14 +46,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Verify Rust crates package cleanly
-        run: cargo package --allow-dirty --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
+        run: cargo package --manifest-path rust/Cargo.toml -p tstring-syntax -p tstring-json -p tstring-toml -p tstring-yaml
 
   publish-syntax:
     needs: package-check
@@ -59,16 +63,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Publish tstring-syntax
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-syntax
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-syntax
 
   publish-json:
     needs: publish-syntax
@@ -81,9 +82,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
@@ -93,7 +91,7 @@ jobs:
       - name: Publish tstring-json
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-json
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-json
 
   publish-toml:
     needs: publish-json
@@ -106,16 +104,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Publish tstring-toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-toml
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-toml
 
   publish-yaml:
     needs: publish-toml
@@ -128,13 +123,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Sync lockstep versions to release tag
-        run: python3 scripts/manage_versions.py set "${{ env.RELEASE_VERSION }}"
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.94.0
 
       - name: Publish tstring-yaml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --allow-dirty --manifest-path rust/Cargo.toml -p tstring-yaml
+        run: cargo publish --manifest-path rust/Cargo.toml -p tstring-yaml

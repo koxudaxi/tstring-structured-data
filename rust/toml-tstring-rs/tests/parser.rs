@@ -106,14 +106,14 @@ fn reports_contextual_interpolation_type_requirements() {
             InterpolationTypeRequirement::new(0, "str", "toml key"),
             InterpolationTypeRequirement::new(
                 1,
-                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]",
+                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[str, object]",
                 "toml value"
             ),
             InterpolationTypeRequirement::new(2, "str", "toml string fragment"),
             InterpolationTypeRequirement::new(3, "str", "toml key"),
             InterpolationTypeRequirement::new(
                 4,
-                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | dict[str, object]",
+                "str | int | float | bool | datetime.date | datetime.time | datetime.datetime | list[object] | tuple[object, ...] | dict[str, object]",
                 "toml value"
             ),
         ]

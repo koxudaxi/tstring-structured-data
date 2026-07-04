@@ -6,10 +6,11 @@ from tstring_core import (
     UnrepresentableValueError,
 )
 
-from ._runtime import JsonProfile, render_data, render_result, render_text
+from ._runtime import JsonProfile, JsonTemplate, render_data, render_result, render_text
 
 __all__ = [
     "JsonProfile",
+    "JsonTemplate",
     "RenderResult",
     "TemplateError",
     "TemplateParseError",

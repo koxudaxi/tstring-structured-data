@@ -30,12 +30,16 @@ This example builds a TOML configuration with interpolated table headers, keys, 
 ## Supported types
 
 - `str`, `int`, `float`, `bool`
-- `list` (rendered as TOML arrays)
+- `list`, `tuple` (rendered as TOML arrays)
 - `dict` (rendered as inline tables or nested tables)
 - `datetime`, `date`, `time` (rendered as TOML-native datetime literals)
 
 !!! warning
     TOML has no null value — `None` is rejected. Offset-aware `time` values are also rejected.
+
+Nested `Template` objects are not rendered recursively when passed as interpolation values.
+Compose templates with PEP 750 template concatenation before calling `render_data`,
+`render_text`, or `render_result`.
 
 ## Profiles
 

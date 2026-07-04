@@ -6,7 +6,7 @@ from tstring_core import (
     UnrepresentableValueError,
 )
 
-from ._runtime import YamlProfile, render_data, render_result, render_text
+from ._runtime import YamlProfile, YamlTemplate, render_data, render_result, render_text
 
 __all__ = [
     "RenderResult",
@@ -15,6 +15,7 @@ __all__ = [
     "TemplateSemanticError",
     "UnrepresentableValueError",
     "YamlProfile",
+    "YamlTemplate",
     "render_data",
     "render_result",
     "render_text",

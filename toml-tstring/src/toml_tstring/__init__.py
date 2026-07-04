@@ -6,7 +6,7 @@ from tstring_core import (
     UnrepresentableValueError,
 )
 
-from ._runtime import TomlProfile, render_data, render_result, render_text
+from ._runtime import TomlProfile, TomlTemplate, render_data, render_result, render_text
 
 __all__ = [
     "RenderResult",
@@ -14,6 +14,7 @@ __all__ = [
     "TemplateParseError",
     "TemplateSemanticError",
     "TomlProfile",
+    "TomlTemplate",
     "UnrepresentableValueError",
     "render_data",
     "render_result",

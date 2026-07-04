@@ -17,7 +17,8 @@ render_text(template, profile="1.2.2")  # -> YAML text
 render_result(template, profile="1.2.2")  # -> RenderResult (.text + .data)
 ```
 
-Type alias: `YamlProfile = Literal["1.2.2"]`
+Type aliases: `YamlProfile = Literal["1.2.2"]`,
+`YamlTemplate = Annotated[Template, "yaml"]`
 
 Parsed template structure is cached per process using `template.strings` +
 profile as the key.
