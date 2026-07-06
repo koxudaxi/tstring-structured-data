@@ -1,13 +1,15 @@
 use serde_json::Value;
 use std::str::FromStr;
 use tstring_syntax::{
-    BackendError, BackendResult, InterpolationTypeRequirement, NormalizedDocument, NormalizedFloat,
-    NormalizedKey, NormalizedStream, NormalizedValue, SourcePosition, SourceSpan, StreamItem,
-    TemplateInput,
+    BackendError, BackendResult, DslType, InterpolationTypeRequirement, NormalizedDocument,
+    NormalizedFloat, NormalizedKey, NormalizedStream, NormalizedValue, SourcePosition, SourceSpan,
+    StreamItem, StructuralRole, StructuralSite, TemplateInput, TypeRequirement,
 };
 
 const JSON_VALUE_PYTHON_TYPE: &str =
     "str | int | float | bool | None | dict[str, object] | list[object] | tuple[object, ...]";
+const JSON_ARRAY_PYTHON_TYPE: &str = "list[object] | tuple[object, ...]";
+const JSON_OBJECT_PYTHON_TYPE: &str = "dict[str, object]";
 const STRING_PYTHON_TYPE: &str = "str";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -120,6 +122,44 @@ pub enum JsonValueNode {
     Interpolation(JsonInterpolationNode),
     Object(JsonObjectNode),
     Array(JsonArrayNode),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonStaticStructureOutline {
+    pub objects: Vec<JsonObjectOutline>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonObjectOutline {
+    pub pointer: Option<String>,
+    pub span: SourceSpan,
+    pub static_keys: Vec<JsonStaticKeyOutline>,
+    pub has_interpolated_key: bool,
+    pub static_scalar_values: Vec<JsonStaticScalarValueOutline>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonStaticKeyOutline {
+    pub name: String,
+    pub span: SourceSpan,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonStaticScalarValueOutline {
+    pub pointer: Option<String>,
+    pub key: Option<String>,
+    pub span: SourceSpan,
+    pub kind: JsonStaticScalarKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum JsonStaticScalarKind {
+    Null,
+    Boolean,
+    Integer,
+    Number,
+    String,
 }
 
 pub struct JsonParser {
@@ -334,19 +374,20 @@ impl JsonParser {
 
     fn parse_key(&mut self) -> BackendResult<JsonKeyNode> {
         self.skip_whitespace();
-        let start = self.mark();
         if self.current_kind() == "interpolation" {
+            let interpolation = self.consume_interpolation("key")?;
             return Ok(JsonKeyNode {
-                span: self.span_from(start),
-                value: JsonKeyValue::Interpolation(self.consume_interpolation("key")?),
+                span: interpolation.span.clone(),
+                value: JsonKeyValue::Interpolation(interpolation),
             });
         }
         if self.current_char() != Some('"') {
             return Err(self.error("JSON object keys must be quoted strings or interpolations."));
         }
+        let string = self.parse_string(true)?;
         Ok(JsonKeyNode {
-            span: self.span_from(start),
-            value: JsonKeyValue::String(self.parse_string(true)?),
+            span: string.span.clone(),
+            value: JsonKeyValue::String(string),
         })
     }
 
@@ -647,7 +688,12 @@ pub fn interpolation_type_requirements_with_profile(
 ) -> BackendResult<Vec<InterpolationTypeRequirement>> {
     let document = parse_validated_template_with_profile(template, profile)?;
     let mut requirements = Vec::new();
-    collect_json_value_type_requirements(&document.value, &mut requirements);
+    let root_path = Vec::new();
+    collect_json_value_type_requirements(
+        &document.value,
+        Some(root_path.as_slice()),
+        &mut requirements,
+    );
     requirements.sort_by_key(|requirement| requirement.interpolation_index);
     Ok(requirements)
 }
@@ -660,25 +706,44 @@ pub fn interpolation_type_requirements(
 
 fn collect_json_value_type_requirements(
     value: &JsonValueNode,
+    path: Option<&[String]>,
     requirements: &mut Vec<InterpolationTypeRequirement>,
 ) {
     match value {
         JsonValueNode::String(node) => {
-            collect_json_string_type_requirements(node, requirements);
+            collect_json_string_type_requirements(
+                node,
+                path,
+                StructuralRole::ValueFragment,
+                requirements,
+            );
         }
         JsonValueNode::Literal(_) => {}
         JsonValueNode::Interpolation(node) => {
-            requirements.push(json_type_requirement(node));
+            requirements.push(json_type_requirement(
+                node,
+                StructuralRole::Value,
+                site_for_path(path, StructuralRole::Value),
+            ));
         }
         JsonValueNode::Object(node) => {
             for member in &node.members {
                 collect_json_key_type_requirements(&member.key, requirements);
-                collect_json_value_type_requirements(&member.value, requirements);
+                let key_name = static_json_key_name(&member.key);
+                let child_path = key_name
+                    .as_deref()
+                    .and_then(|key| extend_json_path(path, key));
+                collect_json_value_type_requirements(
+                    &member.value,
+                    child_path.as_deref(),
+                    requirements,
+                );
             }
         }
         JsonValueNode::Array(node) => {
-            for item in &node.items {
-                collect_json_value_type_requirements(item, requirements);
+            for (index, item) in node.items.iter().enumerate() {
+                let child_path = extend_json_path(path, &index.to_string());
+                collect_json_value_type_requirements(item, child_path.as_deref(), requirements);
             }
         }
     }
@@ -690,47 +755,248 @@ fn collect_json_key_type_requirements(
 ) {
     match &key.value {
         JsonKeyValue::String(node) => {
-            collect_json_string_type_requirements(node, requirements);
+            collect_json_string_type_requirements(
+                node,
+                None,
+                StructuralRole::KeyFragment,
+                requirements,
+            );
         }
         JsonKeyValue::Interpolation(node) => {
-            requirements.push(json_type_requirement(node));
+            requirements.push(json_type_requirement(node, StructuralRole::Key, None));
         }
     }
 }
 
 fn collect_json_string_type_requirements(
     string: &JsonStringNode,
+    path: Option<&[String]>,
+    role: StructuralRole,
     requirements: &mut Vec<InterpolationTypeRequirement>,
 ) {
+    let site = site_for_path(path, role);
     for chunk in &string.chunks {
         if let JsonStringPart::Interpolation(node) = chunk {
-            requirements.push(json_type_requirement(node));
+            requirements.push(json_type_requirement(node, role, site.clone()));
         }
     }
 }
 
-fn json_type_requirement(node: &JsonInterpolationNode) -> InterpolationTypeRequirement {
-    match node.role.as_str() {
-        "value" => InterpolationTypeRequirement::new(
-            node.interpolation_index,
-            JSON_VALUE_PYTHON_TYPE,
-            "json value",
-        ),
-        "key" => InterpolationTypeRequirement::new(
-            node.interpolation_index,
-            STRING_PYTHON_TYPE,
-            "json object key",
-        ),
-        "string_fragment" => InterpolationTypeRequirement::new(
-            node.interpolation_index,
-            STRING_PYTHON_TYPE,
-            "json string fragment",
-        ),
-        _ => InterpolationTypeRequirement::new(
-            node.interpolation_index,
-            JSON_VALUE_PYTHON_TYPE,
-            "json interpolation",
-        ),
+fn json_type_requirement(
+    node: &JsonInterpolationNode,
+    role: StructuralRole,
+    site: Option<StructuralSite>,
+) -> InterpolationTypeRequirement {
+    let (expected_python_type, expected_description) = match role {
+        StructuralRole::Value => (JSON_VALUE_PYTHON_TYPE, "json value"),
+        StructuralRole::Key => (STRING_PYTHON_TYPE, "json object key"),
+        StructuralRole::ValueFragment => (STRING_PYTHON_TYPE, "json string fragment"),
+        StructuralRole::KeyFragment => (STRING_PYTHON_TYPE, "json object key fragment"),
+        _ => (JSON_VALUE_PYTHON_TYPE, "json interpolation"),
+    };
+    let mut requirement = InterpolationTypeRequirement::new(
+        node.interpolation_index,
+        expected_python_type,
+        expected_description,
+    );
+    requirement.site = site;
+    requirement
+}
+
+fn static_json_key_name(key: &JsonKeyNode) -> Option<String> {
+    match &key.value {
+        JsonKeyValue::String(string) => static_json_string_value(string),
+        JsonKeyValue::Interpolation(_) => None,
+    }
+}
+
+fn static_json_string_value(string: &JsonStringNode) -> Option<String> {
+    let mut value = String::new();
+    for chunk in &string.chunks {
+        match chunk {
+            JsonStringPart::Chunk(chunk) => value.push_str(&chunk.value),
+            JsonStringPart::Interpolation(_) => return None,
+        }
+    }
+    Some(value)
+}
+
+fn extend_json_path(path: Option<&[String]>, segment: &str) -> Option<Vec<String>> {
+    let mut extended = path?.to_vec();
+    extended.push(segment.to_owned());
+    Some(extended)
+}
+
+fn site_for_path(path: Option<&[String]>, role: StructuralRole) -> Option<StructuralSite> {
+    Some(StructuralSite::new(format_json_pointer(path?), role))
+}
+
+fn format_json_pointer(path: &[String]) -> String {
+    if path.is_empty() {
+        return String::new();
+    }
+
+    let mut pointer = String::new();
+    for segment in path {
+        pointer.push('/');
+        pointer.push_str(&escape_json_pointer_segment(segment));
+    }
+    pointer
+}
+
+fn escape_json_pointer_segment(segment: &str) -> String {
+    let mut escaped = String::new();
+    for ch in segment.chars() {
+        match ch {
+            '~' => escaped.push_str("~0"),
+            '/' => escaped.push_str("~1"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
+pub fn requirement_for(dsl_type: &DslType, profile: JsonProfile) -> TypeRequirement {
+    let _ = profile;
+    // JSON Schema formats are intentionally ignored here. Callers that bind
+    // formats such as date-time own that policy above this transport layer.
+    match dsl_type.name.as_str() {
+        "integer" => TypeRequirement::new("int", Vec::new()),
+        "number" => TypeRequirement::new("int | float", Vec::new()),
+        "string" => TypeRequirement::new(STRING_PYTHON_TYPE, Vec::new()),
+        "boolean" => TypeRequirement::new("bool", Vec::new()),
+        "null" => TypeRequirement::new("None", Vec::new()),
+        "array" => TypeRequirement::new(JSON_ARRAY_PYTHON_TYPE, Vec::new()),
+        "object" => TypeRequirement::new(JSON_OBJECT_PYTHON_TYPE, Vec::new()),
+        "any" => TypeRequirement::new(JSON_VALUE_PYTHON_TYPE, Vec::new()),
+        _ => TypeRequirement::new(JSON_VALUE_PYTHON_TYPE, Vec::new()),
+    }
+}
+
+pub fn static_structure_outline_with_profile(
+    template: &TemplateInput,
+    profile: JsonProfile,
+) -> BackendResult<JsonStaticStructureOutline> {
+    let document = parse_validated_template_with_profile(template, profile)?;
+    let mut outline = JsonStaticStructureOutline {
+        objects: Vec::new(),
+    };
+    let root_path = Vec::new();
+    collect_json_static_structure_outline(
+        &document.value,
+        Some(root_path.as_slice()),
+        &mut outline,
+    );
+    Ok(outline)
+}
+
+pub fn static_structure_outline(
+    template: &TemplateInput,
+) -> BackendResult<JsonStaticStructureOutline> {
+    static_structure_outline_with_profile(template, JsonProfile::default())
+}
+
+fn collect_json_static_structure_outline(
+    value: &JsonValueNode,
+    path: Option<&[String]>,
+    outline: &mut JsonStaticStructureOutline,
+) {
+    match value {
+        JsonValueNode::Object(node) => collect_json_object_outline(node, path, outline),
+        JsonValueNode::Array(node) => {
+            for (index, item) in node.items.iter().enumerate() {
+                let child_path = extend_json_path(path, &index.to_string());
+                collect_json_static_structure_outline(item, child_path.as_deref(), outline);
+            }
+        }
+        JsonValueNode::String(_) | JsonValueNode::Literal(_) | JsonValueNode::Interpolation(_) => {}
+    }
+}
+
+fn collect_json_object_outline(
+    node: &JsonObjectNode,
+    path: Option<&[String]>,
+    outline: &mut JsonStaticStructureOutline,
+) {
+    let mut object_outline = JsonObjectOutline {
+        pointer: path.map(format_json_pointer),
+        span: node.span.clone(),
+        static_keys: Vec::new(),
+        has_interpolated_key: false,
+        static_scalar_values: Vec::new(),
+    };
+    let mut children = Vec::new();
+
+    for member in &node.members {
+        let key_name = static_json_key_name(&member.key);
+        object_outline.has_interpolated_key |= json_key_has_interpolation(&member.key);
+        if let Some(name) = &key_name {
+            object_outline.static_keys.push(JsonStaticKeyOutline {
+                name: name.clone(),
+                span: member.key.span.clone(),
+            });
+        }
+
+        let child_path = key_name
+            .as_deref()
+            .and_then(|key| extend_json_path(path, key));
+        if let Some(kind) = json_static_scalar_kind(&member.value) {
+            object_outline
+                .static_scalar_values
+                .push(JsonStaticScalarValueOutline {
+                    pointer: child_path.as_deref().map(format_json_pointer),
+                    key: key_name.clone(),
+                    span: json_value_span(&member.value).clone(),
+                    kind,
+                });
+        }
+        children.push((&member.value, child_path));
+    }
+
+    outline.objects.push(object_outline);
+    for (value, child_path) in children {
+        collect_json_static_structure_outline(value, child_path.as_deref(), outline);
+    }
+}
+
+fn json_key_has_interpolation(key: &JsonKeyNode) -> bool {
+    match &key.value {
+        JsonKeyValue::Interpolation(_) => true,
+        JsonKeyValue::String(string) => string
+            .chunks
+            .iter()
+            .any(|chunk| matches!(chunk, JsonStringPart::Interpolation(_))),
+    }
+}
+
+fn json_static_scalar_kind(value: &JsonValueNode) -> Option<JsonStaticScalarKind> {
+    match value {
+        JsonValueNode::String(string) if static_json_string_value(string).is_some() => {
+            Some(JsonStaticScalarKind::String)
+        }
+        JsonValueNode::Literal(literal) => match &literal.value {
+            Value::Null => Some(JsonStaticScalarKind::Null),
+            Value::Bool(_) => Some(JsonStaticScalarKind::Boolean),
+            Value::Number(number) if number.is_i64() || number.is_u64() => {
+                Some(JsonStaticScalarKind::Integer)
+            }
+            Value::Number(_) => Some(JsonStaticScalarKind::Number),
+            Value::String(_) | Value::Array(_) | Value::Object(_) => None,
+        },
+        JsonValueNode::String(_)
+        | JsonValueNode::Interpolation(_)
+        | JsonValueNode::Object(_)
+        | JsonValueNode::Array(_) => None,
+    }
+}
+
+fn json_value_span(value: &JsonValueNode) -> &SourceSpan {
+    match value {
+        JsonValueNode::String(node) => &node.span,
+        JsonValueNode::Literal(node) => &node.span,
+        JsonValueNode::Interpolation(node) => &node.span,
+        JsonValueNode::Object(node) => &node.span,
+        JsonValueNode::Array(node) => &node.span,
     }
 }
 

@@ -18,7 +18,7 @@ homepage = "https://github.com/koxudaxi/tstring-structured-data"
 license = "MIT"
 repository = "https://github.com/koxudaxi/tstring-structured-data"
 rust-version = "1.94.0"
-version = "0.2.2"
+version = "0.3.0"
 
 [workspace.dependencies]
 num-bigint = "0.4.6"
