@@ -10,7 +10,7 @@ rust-version.workspace = true
 publish = false
 
 [dev-dependencies]
-tstring-json = { version = "0.3.0", path = "../json-tstring-rs" }
-tstring-syntax = { version = "0.3.0", path = "../tstring-core-rs" }
-tstring-toml = { version = "0.3.0", path = "../toml-tstring-rs" }
-tstring-yaml = { version = "0.3.0", path = "../yaml-tstring-rs" }
+tstring-json = { version = "0.3.1", path = "../json-tstring-rs" }
+tstring-syntax = { version = "0.3.1", path = "../tstring-core-rs" }
+tstring-toml = { version = "0.3.1", path = "../toml-tstring-rs" }
+tstring-yaml = { version = "0.3.1", path = "../yaml-tstring-rs" }

@@ -126,7 +126,7 @@ wheels = [
 
 [[package]]
 name = "json-tstring"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "json-tstring" }
 dependencies = [
     { name = "tstring-bindings" },
@@ -330,7 +330,7 @@ wheels = [
 
 [[package]]
 name = "toml-tstring"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "toml-tstring" }
 dependencies = [
     { name = "tstring-bindings" },
@@ -363,12 +363,12 @@ dev = [
 
 [[package]]
 name = "tstring-bindings"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "rust/python-bindings" }
 
 [[package]]
 name = "tstring-core"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "tstring-core" }
 dependencies = [
     { name = "tstring-bindings" },
@@ -391,7 +391,7 @@ dev = [
 
 [[package]]
 name = "tstring-structured-data-workspace"
-version = "0.3.0"
+version = "0.3.1"
 source = { virtual = "." }
 dependencies = [
     { name = "json-tstring" },
@@ -473,7 +473,7 @@ wheels = [
 
 [[package]]
 name = "yaml-tstring"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "yaml-tstring" }
 dependencies = [
     { name = "tstring-bindings" },
