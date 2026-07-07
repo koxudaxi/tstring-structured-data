@@ -1,6 +1,7 @@
 use tstring_json as backend_json;
 use tstring_syntax::{
-    InterpolationTypeRequirement, TemplateInput, TemplateInterpolation, TemplateSegment,
+    DslType, InterpolationTypeRequirement, StructuralRole, StructuralSite, TemplateInput,
+    TemplateInterpolation, TemplateSegment, TypeRequirement,
 };
 use tstring_toml as backend_toml;
 use tstring_yaml as backend_yaml;
@@ -36,6 +37,39 @@ fn json_backend_public_api_smoke_test() {
         backend_json::format_template(&template).expect("expected json format success"),
         r#"{"name": {name}, "message": "Hello {user!r:>5}"}"#
     );
+}
+
+#[test]
+fn json_backend_structural_site_public_api_smoke_test() {
+    let template = TemplateInput::from_segments(vec![
+        TemplateSegment::StaticText("{\"items\": [{\"id\": ".to_owned()),
+        interpolation(0, "id", "{id}"),
+        TemplateSegment::StaticText("}], \"name\": \"Ada\"}".to_owned()),
+    ]);
+
+    assert_eq!(
+        backend_json::interpolation_type_requirements(&template)
+            .expect("expected json type requirements"),
+        vec![InterpolationTypeRequirement::with_site(
+            0,
+            "str | int | float | bool | None | dict[str, object] | list[object] | tuple[object, ...]",
+            "json value",
+            StructuralSite::new("/items/0/id", StructuralRole::Value)
+        )]
+    );
+    assert_eq!(
+        backend_json::requirement_for(
+            &DslType::new("integer"),
+            backend_json::JsonProfile::default()
+        ),
+        TypeRequirement::new("int", Vec::new())
+    );
+
+    let outline = backend_json::static_structure_outline(&template).expect("expected outline");
+    assert_eq!(outline.objects[0].pointer.as_deref(), Some(""));
+    assert_eq!(outline.objects[1].pointer.as_deref(), Some("/items/0"));
+    assert_eq!(outline.objects[0].static_keys[0].name, "items");
+    assert_eq!(outline.objects[0].static_keys[1].name, "name");
 }
 
 #[test]

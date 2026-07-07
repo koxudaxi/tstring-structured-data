@@ -1,6 +1,6 @@
 [project]
 name = "json-tstring"
-version = "0.2.2"
+version = "0.3.0"
 description = "JSON renderer for t-string structured data templates"
 readme = "README.md"
 license = { text = "MIT" }
@@ -8,8 +8,8 @@ authors = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 maintainers = [{ name = "Koudai Aono", email = "koxudaxi@gmail.com" }]
 requires-python = ">=3.14"
 dependencies = [
-    "tstring-bindings>=0.2.2",
-    "tstring-core>=0.2.2",
+    "tstring-bindings>=0.3.0",
+    "tstring-core>=0.3.0",
 ]
 keywords = ["pep750", "t-strings", "json", "template-strings", "structured-data"]
 classifiers = [

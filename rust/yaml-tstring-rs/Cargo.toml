@@ -20,7 +20,7 @@ test = false
 saphyr = { workspace = true }
 saphyr-parser = { workspace = true }
 serde_json = { workspace = true }
-tstring-syntax = { version = "0.2.2", path = "../tstring-core-rs" }
+tstring-syntax = { version = "0.3.0", path = "../tstring-core-rs" }
 
 [dev-dependencies]
 toml = { workspace = true }

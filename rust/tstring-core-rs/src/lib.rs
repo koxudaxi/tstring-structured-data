@@ -180,10 +180,12 @@ impl std::error::Error for BackendError {}
 pub type BackendResult<T> = Result<T, BackendError>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct InterpolationTypeRequirement {
     pub interpolation_index: usize,
     pub expected_python_type: String,
     pub expected_description: String,
+    pub site: Option<StructuralSite>,
 }
 
 impl InterpolationTypeRequirement {
@@ -197,6 +199,87 @@ impl InterpolationTypeRequirement {
             interpolation_index,
             expected_python_type: expected_python_type.into(),
             expected_description: expected_description.into(),
+            site: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_site(
+        interpolation_index: usize,
+        expected_python_type: impl Into<String>,
+        expected_description: impl Into<String>,
+        site: StructuralSite,
+    ) -> Self {
+        Self {
+            interpolation_index,
+            expected_python_type: expected_python_type.into(),
+            expected_description: expected_description.into(),
+            site: Some(site),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructuralSite {
+    pub pointer: String,
+    pub role: StructuralRole,
+}
+
+impl StructuralSite {
+    #[must_use]
+    pub fn new(pointer: impl Into<String>, role: StructuralRole) -> Self {
+        Self {
+            pointer: pointer.into(),
+            role,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum StructuralRole {
+    Value,
+    Key,
+    ValueFragment,
+    KeyFragment,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DslType {
+    pub name: String,
+    pub format: Option<String>,
+}
+
+impl DslType {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            format: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_format(name: impl Into<String>, format: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            format: Some(format.into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TypeRequirement {
+    pub python_type: String,
+    pub imports: Vec<String>,
+}
+
+impl TypeRequirement {
+    #[must_use]
+    pub fn new(python_type: impl Into<String>, imports: Vec<String>) -> Self {
+        Self {
+            python_type: python_type.into(),
+            imports,
         }
     }
 }
@@ -547,8 +630,9 @@ impl TemplateInput {
 #[cfg(test)]
 mod tests {
     use super::{
-        Diagnostic, DiagnosticSeverity, ErrorKind, SourcePosition, SourceSpan, StreamItem,
-        TemplateInput, TemplateInterpolation, TemplateSegment, TemplateToken,
+        Diagnostic, DiagnosticSeverity, DslType, ErrorKind, InterpolationTypeRequirement,
+        SourcePosition, SourceSpan, StreamItem, StructuralRole, StructuralSite, TemplateInput,
+        TemplateInterpolation, TemplateSegment, TemplateToken, TypeRequirement,
     };
 
     #[test]
@@ -662,5 +746,32 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Parse);
         assert_eq!(error.diagnostics.len(), 1);
         assert_eq!(error.diagnostics[0].code, "json.parse");
+    }
+
+    #[test]
+    fn vocabulary_constructors_preserve_structural_sites() {
+        let site = StructuralSite::new("/items/0/id", StructuralRole::Value);
+        assert_eq!(
+            InterpolationTypeRequirement::new(0, "object", "generic").site,
+            None
+        );
+        assert_eq!(
+            InterpolationTypeRequirement::with_site(1, "int", "json integer", site.clone()).site,
+            Some(site)
+        );
+        assert_eq!(
+            DslType::with_format("string", "date-time"),
+            DslType {
+                name: "string".to_owned(),
+                format: Some("date-time".to_owned()),
+            }
+        );
+        assert_eq!(
+            TypeRequirement::new("datetime.datetime", vec!["datetime".to_owned()]),
+            TypeRequirement {
+                python_type: "datetime.datetime".to_owned(),
+                imports: vec!["datetime".to_owned()],
+            }
+        );
     }
 }
