@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 This changelog is automatically generated from GitHub Releases.
 
 ---
+## [0.3.1](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.3.1) - 2026-07-07
+
+## What's Changed
+* feat: add structural sites by @koxudaxi in https://github.com/koxudaxi/tstring-structured-data/pull/49
+
+
+**Full Changelog**: https://github.com/koxudaxi/tstring-structured-data/compare/0.3.0...0.3.1
+
+---
+
 ## [0.3.0](https://github.com/koxudaxi/tstring-structured-data/releases/tag/0.3.0) - 2026-07-04
 
 ## Breaking Changes
