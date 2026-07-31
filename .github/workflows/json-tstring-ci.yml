@@ -35,7 +35,7 @@ jobs:
           working-directory: json-tstring
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Sync development dependencies
         run: uv sync --group dev
